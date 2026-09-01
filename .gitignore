@@ -1,0 +1,47 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.DS_Store
+.idea/
+.vscode/
+
+# Next.js / dashboard
+dashboard/node_modules/
+dashboard/.next/
+dashboard/.uploads/
+*.tsbuildinfo
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# run artifacts (may contain batch financials)
+report.json
+report.txt
+report*.json
+report*.txt
+report*.csv
+
+# local SQLite store only (root). Do not use a bare `data/` — that
+# would also ignore src/finance_controller/data/.
+/data/
+*.db
+*.db-wal
+*.db-shm
+
+# local leftover dump; canonical copy lives in fixtures/
+/untitled folder/

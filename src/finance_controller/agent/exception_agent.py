@@ -1,0 +1,187 @@
+from __future__ import annotations
+
+from finance_controller.agent.llm import LlmBudget, LlmUnavailable, complete_json
+from finance_controller.models import (
+    ExceptionHypothesis,
+    ExceptionType,
+    Record,
+    ReconException,
+)
+
+_RULES: dict[ExceptionType, tuple[str, str, float]] = {
+    ExceptionType.MISSING_IN_BANK: (
+        "Books show the transaction but no bank cash movement was found.",
+        "Trace settlement timing and request the missing bank line from ops.",
+        0.78,
+    ),
+    ExceptionType.MISSING_IN_LEDGER: (
+        "Cash or PSP settlement exists without a ledger booking.",
+        "Post the missing journal entry or confirm it is a non-book item.",
+        0.78,
+    ),
+    ExceptionType.AMOUNT_MISMATCH: (
+        "Linked rows disagree on amount beyond fee/rounding tolerance.",
+        "Inspect fees, chargebacks, and partial captures before adjusting.",
+        0.8,
+    ),
+    ExceptionType.DUPLICATE: (
+        "An extra bank row shares a reference already closed by another match.",
+        "Mark the extra statement line as a duplicate or split booking.",
+        0.86,
+    ),
+    ExceptionType.FX_MISMATCH: (
+        "Same economic event is booked in different currencies.",
+        "Rebook at the contracted currency or attach the FX conversion ticket.",
+        0.84,
+    ),
+    ExceptionType.UNMATCHED: (
+        "No counterpart could be linked with exact, fee-tolerant, or batch rules.",
+        "Leave on the exception queue; do not auto-clear.",
+        0.7,
+    ),
+    ExceptionType.PARTIAL_REFUND: (
+        "Bank cash is below expected net; a partial refund or capture is likely.",
+        "Confirm the refund in the PSP and post the residual, do not force-match.",
+        0.82,
+    ),
+    ExceptionType.ZERO_OR_NEGATIVE_NET: (
+        "Settlement net is zero or negative (full refund or chargeback).",
+        "Book the refund/chargeback separately; do not close as a sale.",
+        0.88,
+    ),
+    ExceptionType.STATUS_MISMATCH: (
+        "Sources disagree on success vs failed/pending.",
+        "Hold until the PSP terminal status matches the books.",
+        0.84,
+    ),
+    ExceptionType.DATE_INVERTED: (
+        "Bank credit is dated before the payment or before the settlement was created.",
+        "Reject the pairing; investigate back-valued entries.",
+        0.86,
+    ),
+    ExceptionType.LATE_SETTLEMENT: (
+        "Clearing lagged beyond the allowed banking-day window.",
+        "Age the item in-flight and chase the acquirer.",
+        0.8,
+    ),
+    ExceptionType.EMPTY_UTR: (
+        "Bank UTR is missing.",
+        "Request the UTR from ops before closing.",
+        0.83,
+    ),
+    ExceptionType.MALFORMED_UTR: (
+        "Bank UTR failed the format check.",
+        "Correct the UTR; do not match on a garbage identifier.",
+        0.85,
+    ),
+    ExceptionType.GST_ZERO_BUG: (
+        "Taxable line was booked with GST of zero.",
+        "Recompute 18% GST; this is not an exempt supply.",
+        0.87,
+    ),
+    ExceptionType.GST_MISMATCH: (
+        "GST is neither half-up nor bankers 18% of gross.",
+        "Recalculate tax before releasing the match.",
+        0.8,
+    ),
+    ExceptionType.MALFORMED_AMOUNT: (
+        "Amount is non-finite or unparsable.",
+        "Repair the source file; do not reconcile NaN/Inf.",
+        0.95,
+    ),
+    ExceptionType.DUPLICATE_UTR: (
+        "The same UTR was ingested more than once.",
+        "Drop the duplicate statement line.",
+        0.86,
+    ),
+}
+
+
+def rule_hypothesis(exception: ReconException) -> ExceptionHypothesis:
+    explanation, action, confidence = _RULES.get(
+        exception.exception_type,
+        (
+            "Exception remains on the queue after deterministic matching.",
+            "Investigate manually; do not auto-clear.",
+            0.65,
+        ),
+    )
+    return ExceptionHypothesis(
+        hypothesis_type=exception.exception_type,
+        explanation=explanation,
+        suggested_action=action,
+        confidence=confidence,
+        produced_by="rules",
+    )
+
+
+def _prompt(exception: ReconException, nearby: list[Record]) -> str:
+    sample = [
+        {
+            "id": r.id,
+            "source": r.source.value,
+            "reference": r.reference,
+            "amount": str(r.amount),
+            "currency": r.currency,
+            "date": r.txn_date.isoformat(),
+            "fee": str(r.fee),
+            "batch_id": r.batch_id,
+        }
+        for r in nearby[:12]
+    ]
+    return (
+        f"Exception {exception.exception_id} type_hint={exception.exception_type.value}\n"
+        f"reason={exception.reason}\n"
+        f"references={exception.references}\n"
+        f"sources={[s.value for s in exception.sources_involved]}\n"
+        f"amounts={ {k: str(v) for k, v in exception.amounts.items()} }\n"
+        f"nearby_records={sample}\n"
+    )
+
+
+def hypothesize_exception(
+    exception: ReconException,
+    records: list[Record],
+    *,
+    model: str,
+    provider: str,
+    budget: LlmBudget | None = None,
+) -> ExceptionHypothesis:
+    nearby = [r for r in records if r.reference in set(exception.references) or r.id in set(exception.record_ids)]
+    try:
+        data = complete_json(
+            _prompt(exception, nearby), model=model, provider=provider, budget=budget
+        )
+        htype = ExceptionType(data["hypothesis_type"])
+        return ExceptionHypothesis(
+            hypothesis_type=htype,
+            explanation=str(data.get("explanation") or "").strip() or rule_hypothesis(exception).explanation,
+            suggested_action=str(data.get("suggested_action") or "").strip()
+            or rule_hypothesis(exception).suggested_action,
+            confidence=max(0.0, min(1.0, float(data.get("confidence", 0.5)))),
+            produced_by="llm",
+        )
+    except (LlmUnavailable, KeyError, ValueError, TypeError):
+        return rule_hypothesis(exception)
+
+
+def annotate_exceptions(
+    exceptions: list[ReconException],
+    records: list[Record],
+    *,
+    model: str,
+    provider: str,
+    budget: LlmBudget | None = None,
+) -> list[ReconException]:
+    annotated: list[ReconException] = []
+    for exc in exceptions:
+        annotated.append(
+            exc.model_copy(
+                update={
+                    "hypothesis": hypothesize_exception(
+                        exc, records, model=model, provider=provider, budget=budget
+                    )
+                }
+            )
+        )
+    return annotated

@@ -1,0 +1,16 @@
+---
+description: Token-efficient communication and explanation style
+alwaysApply: true
+---
+
+# Communication Style
+
+Optimize for low token usage. Say more with less.
+
+- Explain code in the fewest words that stay accurate. Prefer a one-line summary over paragraphs.
+- Do NOT restate code back to the user or narrate obvious steps ("now I import X, then I loop...").
+- Do NOT add narration comments in code (`// import module`, `// loop over items`). Comments only for non-obvious intent, trade-offs, or constraints.
+- Reference existing code with file/line citations instead of re-pasting large blocks.
+- Skip preamble and postamble. Lead with the answer or the change.
+- Only surface details the user must act on: decisions made, remaining risks, how to run it.
+- When work spans many files, give a short bullet summary, not a file-by-file walkthrough.

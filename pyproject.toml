@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finance-controller"
+version = "0.1.0"
+description = "AI Finance Controller — multi-source reconciliation over synthetic batches"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.11.0",
+    "python-dateutil>=2.9.0",
+    "rich>=14.0.0",
+    "openai>=1.99.0",
+    "python-dotenv>=1.1.0",
+    "openpyxl>=3.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3.0"]
+
+[project.scripts]
+finance-controller = "finance_controller.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -1,0 +1,338 @@
+[
+  {
+    "payment_id": "PAY0001",
+    "settlement_id": "STL0001",
+    "utr": "UTR2117550026",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0002",
+    "settlement_id": "STL0002",
+    "utr": "UTR4428714227",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0003",
+    "settlement_id": "STL0003",
+    "utr": "UTR8687593586",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0004",
+    "settlement_id": "STL0004",
+    "utr": "UTR0220212633",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0005",
+    "settlement_id": "STL0005",
+    "utr": "UTR6171396568",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0006",
+    "settlement_id": "STL0006",
+    "utr": "UTR4095724861",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0007",
+    "settlement_id": "STL0007",
+    "utr": "UTR2583295001",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0008",
+    "settlement_id": "STL0008",
+    "utr": "UTR5354259618",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0009",
+    "settlement_id": "STL0009",
+    "utr": "UTR2107797516",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0010",
+    "settlement_id": "STL0010",
+    "utr": "UTR3199954139",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0011",
+    "settlement_id": "STL0011",
+    "utr": "UTR9040771452",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0012",
+    "settlement_id": "STL0012",
+    "utr": "UTR7673638420",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0013",
+    "settlement_id": "STL0013",
+    "utr": "UTR2062980262",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0014",
+    "settlement_id": "STL0014",
+    "utr": "UTR4781044476",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0015",
+    "settlement_id": "STL0015",
+    "utr": "UTR8115114808",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0016",
+    "settlement_id": "STL0016",
+    "utr": "UTR8998142403",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0017",
+    "settlement_id": "STL0017",
+    "utr": "UTR2677641207",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0018",
+    "settlement_id": "STL0018",
+    "utr": "UTR5581901562",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0019",
+    "settlement_id": "STL0019",
+    "utr": "UTR5006532632",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0020",
+    "settlement_id": "STL0020",
+    "utr": "UTR3704990229",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0021",
+    "settlement_id": "STL0021",
+    "utr": "UTR1876960826",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0022",
+    "settlement_id": "STL0022",
+    "utr": "UTR1223685290",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0023",
+    "settlement_id": "STL0023",
+    "utr": "UTR0762754008",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0024",
+    "settlement_id": "STL0024",
+    "utr": "UTR5403990366",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0025",
+    "settlement_id": "STL0025",
+    "utr": "UTR7921714197",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0026",
+    "settlement_id": "STL0026",
+    "utr": "UTR2718828437",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0027",
+    "settlement_id": "STL0027",
+    "utr": "UTR3207356830",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0028",
+    "settlement_id": "STL0028",
+    "utr": "UTR1473653527",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0029",
+    "settlement_id": "STL0029",
+    "utr": "UTR6971499661",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0030",
+    "settlement_id": "STL0030",
+    "utr": "UTR3651637154",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0031",
+    "settlement_id": "STL0031",
+    "utr": "UTR7634657976",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0032",
+    "settlement_id": "STL0032",
+    "utr": "UTR3876210248",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0033",
+    "settlement_id": "STL0033",
+    "utr": "UTR1642607714",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0034",
+    "settlement_id": "STL0034",
+    "utr": "UTR4591145537",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0035",
+    "settlement_id": "STL0035",
+    "utr": "UTR4941847827",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0036",
+    "settlement_id": "STL0036",
+    "utr": "UTR0223512670",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0037",
+    "settlement_id": "STL0037",
+    "utr": "UTR0837908549",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0038",
+    "settlement_id": "STL0038",
+    "utr": "UTR7562240364",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "PAY0039",
+    "settlement_id": "STL0039",
+    "utr": "UTR5956048123",
+    "label": "late_clearing"
+  },
+  {
+    "payment_id": "PAY0040",
+    "settlement_id": "STL0040",
+    "utr": "UTR7820059367",
+    "label": "late_clearing"
+  },
+  {
+    "payment_id": "PAY0041",
+    "settlement_id": "STL0041",
+    "utr": "UTR6241942369",
+    "label": "late_clearing"
+  },
+  {
+    "payment_id": "PAY0042",
+    "settlement_id": "STL0042",
+    "utr": "UTR0369370661",
+    "label": "late_clearing"
+  },
+  {
+    "payment_id": "PAY0043",
+    "settlement_id": "STL0043",
+    "utr": "UTR7343538819",
+    "label": "late_clearing"
+  },
+  {
+    "payment_id": "PAY0044|PAY0045|PAY0046",
+    "settlement_id": "STL0044",
+    "utr": "UTR4853292475",
+    "label": "aggregated"
+  },
+  {
+    "payment_id": "PAY0047|PAY0048|PAY0049",
+    "settlement_id": "STL0045",
+    "utr": "UTR8720907476",
+    "label": "aggregated"
+  },
+  {
+    "payment_id": "PAY0050|PAY0051|PAY0052",
+    "settlement_id": "STL0046",
+    "utr": "UTR4547372211",
+    "label": "aggregated"
+  },
+  {
+    "payment_id": "PAY0053",
+    "settlement_id": "STL0047",
+    "utr": "UTR1725759823",
+    "label": "refund"
+  },
+  {
+    "payment_id": "PAY0054",
+    "settlement_id": "STL0048",
+    "utr": "UTR2956184854",
+    "label": "refund"
+  },
+  {
+    "payment_id": "PAY0055",
+    "settlement_id": "STL0049",
+    "utr": "UTR9484060153",
+    "label": "refund"
+  },
+  {
+    "payment_id": "PAY0056",
+    "settlement_id": "STL0050",
+    "utr": "UTR6725448936",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": "PAY0057",
+    "settlement_id": "STL0051",
+    "utr": "UTR6725448936",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": "PAY0058",
+    "settlement_id": "STL0052",
+    "utr": "UTR1100452277",
+    "label": "gst_mismatch"
+  },
+  {
+    "payment_id": "PAY0059",
+    "settlement_id": "STL0053",
+    "utr": "UTR7669456980",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": null,
+    "settlement_id": null,
+    "utr": "UTR1375216695",
+    "label": "orphan_bank_credit"
+  },
+  {
+    "payment_id": "PAY0060",
+    "settlement_id": "STL0054",
+    "utr": "UTR6026850785",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "PAY0061",
+    "settlement_id": "STL0055",
+    "utr": "UTR9156403368",
+    "label": "rounding_drift"
+  }
+]

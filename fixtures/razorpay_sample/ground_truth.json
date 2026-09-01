@@ -1,0 +1,230 @@
+[
+  {
+    "payment_id": "pay_Fc000000000001",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000002",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000003",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000004",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000005",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000006",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000007",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000008",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000009",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000010",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000011",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000012",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000013",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000014",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000015",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000016",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000017",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000018",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000019",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000020",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000021",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000022",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000023",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000024",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000025",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000026",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000027",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000028",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000029",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000030",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000031",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000032",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000033",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000034",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000035",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000036",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000037",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000038",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000039",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000040",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000041",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000042",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000043",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000044",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000045",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000046",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000047",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000048",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000049",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000050",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "pay_Fc000000000051",
+    "label": "gst_mismatch"
+  },
+  {
+    "payment_id": "pay_Fc000000000052",
+    "label": "gst_mismatch"
+  },
+  {
+    "payment_id": "pay_Fc000000000053",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "pay_Fc000000000054",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "pay_Fc000000000055",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "pay_Fc000000000056",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "pay_Fc000000000057",
+    "label": "refund"
+  }
+]

@@ -1,0 +1,26 @@
+---
+description: AI Finance Controller project spec and the accuracy bar
+alwaysApply: true
+---
+
+# AI Finance Controller
+
+Build agents that close one finance-ops loop across a 50+ record batch of synthetic
+data, then report match rate and an honest exception list.
+
+## Directions (pick/close one loop end-to-end)
+- Multi-source reconciliation
+- Settlement Q&A agent
+- Forward cash forecaster
+- Tax-line matcher
+
+## The bar (non-negotiable)
+- **Throughput**: process a batch of 50+ synthetic records, not a cherry-picked row.
+- **Measured accuracy**: compute and print the match rate over the whole batch.
+- **Honest exceptions**: list every record the agent could NOT resolve, with the reason. Never hide or auto-pass unresolved items.
+
+## Implementation rules
+- Generate synthetic datasets deterministically (fixed seed) so runs are reproducible.
+- Verification > generation speed. Every result must be checkable: log inputs, decisions, and confidence per record.
+- Output a structured report: `total`, `matched`, `match_rate`, `exceptions[]` (with record id + reason).
+- No silent failures — an unhandled record is an exception, not a pass.
