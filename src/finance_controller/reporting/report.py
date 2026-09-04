@@ -35,6 +35,7 @@ from finance_controller.reconciliation.engine import (
     predicted_exception_keys,
 )
 from finance_controller.reporting.exposure import exception_exposure
+from finance_controller.reporting.forecast import compute_forward_cash
 from finance_controller.reporting.kpis import compute_kpis
 
 
@@ -105,17 +106,31 @@ def compute_accuracy(ground_truth: list[GroundTruth], result: EngineResult) -> A
 
 
 def compute_cash(result: EngineResult) -> CashPosition:
-    closed_banks = [
-        r
-        for r in result.records
-        if r.id in result.closed_record_ids and r.source == Source.BANK
-    ]
+    closed_ids = result.closed_record_ids
+    banks = [r for r in result.records if r.source == Source.BANK]
+    ledgers = [r for r in result.records if r.source == Source.LEDGER]
+    closed_banks = [b for b in banks if b.id in closed_ids]
+    open_banks = [b for b in banks if b.id not in closed_ids]
+    closed_ledgers = [row for row in ledgers if row.id in closed_ids]
     closed_net = sum((b.amount for b in closed_banks), Decimal("0.00")).quantize(Decimal("0.01"))
+    bank_credited = sum((b.amount for b in banks), Decimal("0.00")).quantize(Decimal("0.01"))
+    unmatched_bank = sum((b.amount for b in open_banks), Decimal("0.00")).quantize(Decimal("0.01"))
+    expected_ledger = sum((row.amount for row in ledgers), Decimal("0.00")).quantize(Decimal("0.01"))
+    settled_ledger = sum((row.amount for row in closed_ledgers), Decimal("0.00")).quantize(
+        Decimal("0.01")
+    )
     by_id = {r.id: r for r in result.records}
     ledger_gross = sum(
         (exception_exposure(exc, by_id) for exc in result.exceptions),
         Decimal("0.00"),
     ).quantize(Decimal("0.01"))
+    missing_bank = Decimal("0.00")
+    for exc in result.exceptions:
+        members = [by_id[i] for i in exc.record_ids if i in by_id]
+        if any(r.source == Source.BANK for r in members):
+            continue
+        missing_bank += exception_exposure(exc, by_id)
+    missing_bank = missing_bank.quantize(Decimal("0.01"))
     aged = sum(1 for e in result.exceptions if e.exception_type.value == "late_settlement")
     return CashPosition(
         closed_bank_net=closed_net,
@@ -123,6 +138,12 @@ def compute_cash(result: EngineResult) -> CashPosition:
         in_flight_gross=ledger_gross,
         negative=closed_net < 0,
         in_flight_aged_out=aged,
+        bank_credited_total=bank_credited,
+        unmatched_bank_net=unmatched_bank,
+        expected_ledger_gross=expected_ledger,
+        settled_ledger_gross=settled_ledger,
+        expected_not_credited=missing_bank,
+        variance=(expected_ledger - bank_credited).quantize(Decimal("0.01")),
     )
 
 
@@ -178,6 +199,7 @@ def build_report(
     rate = group_match_rate(matched, len(exceptions))
     investigations = investigations or []
     cash = compute_cash(result)
+    forward = compute_forward_cash(result, config)
     match_precision = compute_match_precision(ground_truth, result.closed_keys)
     kpis = compute_kpis(
         result=result,
@@ -212,6 +234,7 @@ def build_report(
         accuracy=compute_accuracy(ground_truth, result),
         kpis=kpis,
         cash=cash,
+        forward=forward,
         value=compute_value(investigations, cash, closed_count=matched),
         ground_truth=ground_truth,
     )
@@ -278,9 +301,19 @@ def render_text(report: Report) -> str:
     if report.cash:
         cash = report.cash
         console.print(
-            f"cash  closed_bank_net={cash.closed_bank_net}  "
-            f"in_flight_exceptions={cash.in_flight_count} ledger_gross={cash.in_flight_gross}  "
-            f"negative={cash.negative}  aged_out={cash.in_flight_aged_out}"
+            f"cash  settled_bank={cash.closed_bank_net}  "
+            f"blocked_ledger={cash.in_flight_gross} ({cash.in_flight_count} exceptions)  "
+            f"unmatched_bank={cash.unmatched_bank_net}  "
+            f"expected_not_credited={cash.expected_not_credited}  "
+            f"bank_credited={cash.bank_credited_total}  "
+            f"expected_ledger={cash.expected_ledger_gross}  "
+            f"variance={cash.variance}  aged_out={cash.in_flight_aged_out}"
+        )
+    if report.forward:
+        fwd = report.forward
+        console.print(
+            f"forward  as_of={fwd.as_of.isoformat()}  lag_days={fwd.lag_days}  "
+            f"due_within_window={fwd.due_within_window}  stuck_past_window={fwd.stuck_past_window}"
         )
     if report.value:
         value = report.value

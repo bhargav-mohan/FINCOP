@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from finance_controller.agent.exception_agent import cites_instance
 from finance_controller.models import ExpectedStatus, GroundTruth, KpiScorecard, ReconException
+from finance_controller.reporting.citations import cites_instance
 from finance_controller.reconciliation.engine import EngineResult, keys_for_exception
 
 MATCH_PRECISION_THRESHOLD = 0.90

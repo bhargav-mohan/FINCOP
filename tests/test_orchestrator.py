@@ -106,6 +106,48 @@ def test_agent_refuses_fcfs_when_two_banks_would_validate():
     assert any("ambiguous" in e for e in inv.evidence)
 
 
+def test_llm_reconcile_tool_cannot_close_when_validator_rejects():
+    records = [
+        _rec(id="L1", source=Source.LEDGER, reference="TXN-A", amount=Decimal("100.00"), payee="ALICE"),
+        _rec(
+            id="P1",
+            source=Source.PSP,
+            reference="TXN-A",
+            amount=Decimal("100.00"),
+            fee=Decimal("2.00"),
+            payee="ALICE",
+        ),
+        _rec(
+            id="B1",
+            source=Source.BANK,
+            reference="TXN-A",
+            amount=Decimal("113.00"),
+            txn_date=date(2026, 1, 11),
+            payee="ALICE",
+        ),
+    ]
+    config = ReconConfig()
+    result = reconcile(records, config)
+    bench = ReconWorkbench(result, config)
+    exc = result.exceptions[0]
+    before = result.closed_group_count
+    out = bench.dispatch(
+        "reconcile",
+        {
+            "exception_id": exc.exception_id,
+            "record_ids": list(exc.record_ids),
+            "evidence": ["llm asserted a match"],
+            "rationale": "the model wanted this closed",
+        },
+        exception_id=exc.exception_id,
+        produced_by="llm",
+    )
+    assert out.get("ok") is not True
+    assert out.get("rejected") is True
+    assert result.closed_group_count == before
+    assert exc.exception_id in {e.exception_id for e in result.exceptions}
+
+
 def test_orchestrate_fallback_without_api_key_completes_seeded_batch():
     from finance_controller.data.synthetic import generate
 
@@ -170,3 +212,5 @@ def test_escalated_count_equals_open_exceptions_on_full_seed():
         Decimal("0.00"),
     ).quantize(Decimal("0.01"))
     assert cash.in_flight_gross == expected_gross
+    assert cash.closed_bank_net + cash.unmatched_bank_net == cash.bank_credited_total
+    assert cash.variance == (cash.expected_ledger_gross - cash.bank_credited_total)

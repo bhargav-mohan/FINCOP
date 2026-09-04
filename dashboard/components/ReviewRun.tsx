@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { unstable_noStore as noStore } from "next/cache";
 
+import { CashBooks } from "@/components/CashBooks";
 import { EvidenceTabs } from "@/components/EvidenceTabs";
 import { ExceptionsTable } from "@/components/ExceptionsTable";
 import { KpiStrip } from "@/components/KpiStrip";
@@ -44,6 +45,7 @@ export async function ReviewRun({
         warnings={[...(data.ingestion?.warnings ?? []), ...(data.agent_warnings ?? [])]}
       />
       <Verdict data={data} />
+      <CashBooks data={data} />
       <KpiStrip data={data} />
       <ExceptionsTable
         key={requestId}

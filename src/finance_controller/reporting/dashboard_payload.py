@@ -15,6 +15,46 @@ def _money(value: Decimal | None) -> str:
     return str(value)
 
 
+def _cash_payload(cash) -> dict[str, Any]:
+    if cash is None:
+        return {
+            "closed_bank_net": "0.00",
+            "in_flight_amount": "0.00",
+            "in_flight_count": 0,
+            "aged_out_count": 0,
+            "bank_credited_total": "0.00",
+            "unmatched_bank_net": "0.00",
+            "expected_ledger_gross": "0.00",
+            "settled_ledger_gross": "0.00",
+            "expected_not_credited": "0.00",
+            "variance": "0.00",
+        }
+    return {
+        "closed_bank_net": _money(cash.closed_bank_net),
+        "in_flight_amount": _money(cash.in_flight_gross),
+        "in_flight_count": cash.in_flight_count,
+        "aged_out_count": cash.in_flight_aged_out,
+        "bank_credited_total": _money(cash.bank_credited_total),
+        "unmatched_bank_net": _money(cash.unmatched_bank_net),
+        "expected_ledger_gross": _money(cash.expected_ledger_gross),
+        "settled_ledger_gross": _money(cash.settled_ledger_gross),
+        "expected_not_credited": _money(cash.expected_not_credited),
+        "variance": _money(cash.variance),
+    }
+
+
+def _forward_payload(forward) -> dict[str, Any] | None:
+    if forward is None:
+        return None
+    return {
+        "as_of": forward.as_of.isoformat(),
+        "lag_days": forward.lag_days,
+        "due_within_window": _money(forward.due_within_window),
+        "stuck_past_window": _money(forward.stuck_past_window),
+        "expected_by_day": dict(forward.expected_by_day),
+    }
+
+
 def _empty_store(batch_key: str = "", reason: str = "") -> dict[str, Any]:
     return {
         "available": False,
@@ -78,12 +118,8 @@ def error_payload(*, seed: int, num_records: int, error: str) -> dict[str, Any]:
         "baseline_match_rate": 0.0,
         "advanced_match_rate": 0.0,
         "llm_used": False,
-        "cash": {
-            "closed_bank_net": "0.00",
-            "in_flight_amount": "0.00",
-            "in_flight_count": 0,
-            "aged_out_count": 0,
-        },
+        "cash": _cash_payload(None),
+        "forward": None,
         "accuracy": {
             "false_positives": 0,
             "false_negatives": 0,
@@ -207,12 +243,8 @@ def build_dashboard_payload(
         "baseline_match_rate": baseline_match_rate,
         "advanced_match_rate": report.match_rate,
         "llm_used": report.run.llm_used,
-        "cash": {
-            "closed_bank_net": _money(cash.closed_bank_net) if cash else "0.00",
-            "in_flight_amount": _money(cash.in_flight_gross) if cash else "0.00",
-            "in_flight_count": cash.in_flight_count if cash else 0,
-            "aged_out_count": cash.in_flight_aged_out if cash else 0,
-        },
+        "cash": _cash_payload(cash),
+        "forward": _forward_payload(report.forward),
         "accuracy": {
             "false_positives": report.accuracy.false_positives,
             "false_negatives": report.accuracy.false_negatives,

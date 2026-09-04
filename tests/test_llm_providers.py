@@ -2,13 +2,16 @@ import pytest
 
 from finance_controller.agent.llm import (
     LlmUnavailable,
-    OPENROUTER_GLM_MODEL,
-    ZAI_GLM_MODEL,
     _client,
     _llm_error_text,
     _parse_json_object,
 )
-from finance_controller.config import resolve_default_model, resolve_default_provider
+from finance_controller.config import (
+    OPENROUTER_GLM_MODEL,
+    ZAI_GLM_MODEL,
+    resolve_default_model,
+    resolve_default_provider,
+)
 
 
 def test_glm_with_openrouter_key_uses_openrouter_base(monkeypatch):

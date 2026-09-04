@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "finance-controller"
 version = "0.1.0"
-description = "AI Finance Controller — multi-source reconciliation over synthetic batches"
+description = "Deterministic multi-source settlement recon with a bounded investigator"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -4,6 +4,7 @@ import pytest
 
 from finance_controller.agent import orchestrator as orch
 from finance_controller.agent.llm import (
+    GLM_TIMEOUT_SEC,
     LLM_BUDGET_SEC,
     LLM_TIMEOUT_SEC,
     LlmBudget,
@@ -29,7 +30,7 @@ def test_default_budget_is_unlimited():
     budget.check()
 
 
-def test_openai_call_does_not_set_timeout_when_unlimited():
+def test_openai_call_applies_default_timeout_when_budget_is_unlimited():
     captured = {}
 
     class _Client:
@@ -41,7 +42,7 @@ def test_openai_call_does_not_set_timeout_when_unlimited():
                     return "ok"
 
     assert _openai_call(_Client(), budget=LlmBudget(), model="m") == "ok"
-    assert "timeout" not in captured
+    assert captured["timeout"] == LLM_TIMEOUT_SEC
 
 
 def test_openai_call_caps_timeout_to_remaining_budget_when_set():
@@ -120,9 +121,10 @@ def test_quota_error_is_named_not_swallowed():
     assert "quota" in text.lower()
 
 
-def test_client_bounds_have_no_time_cap():
+def test_client_bounds_cap_a_hung_provider():
     from finance_controller.agent.llm import LLM_MAX_RETRIES
 
-    assert LLM_TIMEOUT_SEC is None
+    assert LLM_TIMEOUT_SEC == 12.0
+    assert GLM_TIMEOUT_SEC == 12.0
     assert LLM_BUDGET_SEC is None
     assert LLM_MAX_RETRIES == 1

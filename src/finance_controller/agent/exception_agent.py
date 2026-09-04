@@ -7,6 +7,7 @@ from finance_controller.models import (
     Record,
     ReconException,
 )
+from finance_controller.reporting.citations import cites_instance
 
 _RULES: dict[ExceptionType, tuple[str, str, float]] = {
     ExceptionType.MISSING_IN_BANK: (
@@ -95,32 +96,6 @@ _RULES: dict[ExceptionType, tuple[str, str, float]] = {
         0.86,
     ),
 }
-
-
-def citation_tokens(exception: ReconException) -> list[str]:
-    """Instance tokens an explanation must cite: refs, amounts, engine reason."""
-    tokens: list[str] = []
-    for ref in exception.references:
-        if ref and len(ref) >= 3:
-            tokens.append(ref)
-    for rec_id, amount in exception.amounts.items():
-        tokens.append(str(amount))
-        if rec_id and len(rec_id) >= 3:
-            tokens.append(rec_id)
-    reason = (exception.reason or "").strip()
-    if reason:
-        tokens.append(reason)
-    return tokens
-
-
-def cites_instance(text: str, exception: ReconException) -> bool:
-    hay = (text or "").lower()
-    if not hay:
-        return False
-    for token in citation_tokens(exception):
-        if token.lower() in hay:
-            return True
-    return False
 
 
 def instance_facts(exception: ReconException) -> str:

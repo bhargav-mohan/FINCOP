@@ -1,0 +1,80 @@
+{
+  "razorpay_zip": {
+    "matched": 50,
+    "exceptions": 7,
+    "total_groups": 57,
+    "match_rate": 0.8772,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "cash": {
+      "settled_bank": "57354.03",
+      "blocked_ledger": "5553.22",
+      "blocked_count": 7,
+      "expected_not_credited": "1409.48",
+      "unmatched_bank": "3830.32",
+      "bank_credited": "61184.35",
+      "expected_ledger": "64293.54",
+      "variance": "3109.19"
+    },
+    "forward": {
+      "as_of": "2026-02-02",
+      "due_within_window": "4882.17",
+      "stuck_past_window": "671.05"
+    }
+  },
+  "csv_dir": {
+    "matched": 47,
+    "exceptions": 10,
+    "total_groups": 57,
+    "match_rate": 0.8246,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "cash": {
+      "settled_bank": "1041313.72",
+      "blocked_ledger": "47000.49",
+      "blocked_count": 10,
+      "expected_not_credited": "11666.02",
+      "unmatched_bank": "3017.37",
+      "bank_credited": "1044331.09",
+      "expected_ledger": "1113483.17",
+      "variance": "69152.08"
+    },
+    "forward": {
+      "as_of": "2026-06-25",
+      "due_within_window": "0.00",
+      "stuck_past_window": "47000.49"
+    }
+  },
+  "seed_42_80_edges": {
+    "matched": 56,
+    "exceptions": 23,
+    "total_groups": 79,
+    "match_rate": 0.7089,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "cash": {
+      "settled_bank": "76721.58",
+      "blocked_ledger": "19410.18",
+      "blocked_count": 23,
+      "expected_not_credited": "1139.92",
+      "unmatched_bank": "22759.86",
+      "bank_credited": "99481.44",
+      "expected_ledger": "97697.51",
+      "variance": "-1783.93"
+    },
+    "forward": {
+      "as_of": "2026-02-12",
+      "due_within_window": "2584.89",
+      "stuck_past_window": "16825.29"
+    }
+  }
+}

@@ -174,6 +174,20 @@ class CashPosition(BaseModel):
     in_flight_gross: Decimal
     negative: bool
     in_flight_aged_out: int = 0
+    bank_credited_total: Decimal = Decimal("0.00")
+    unmatched_bank_net: Decimal = Decimal("0.00")
+    expected_ledger_gross: Decimal = Decimal("0.00")
+    settled_ledger_gross: Decimal = Decimal("0.00")
+    expected_not_credited: Decimal = Decimal("0.00")
+    variance: Decimal = Decimal("0.00")
+
+
+class ForwardCash(BaseModel):
+    as_of: date
+    lag_days: int
+    due_within_window: Decimal
+    stuck_past_window: Decimal
+    expected_by_day: dict[str, str] = Field(default_factory=dict)
 
 
 class ValueMetrics(BaseModel):
@@ -223,5 +237,6 @@ class Report(BaseModel):
     accuracy: AccuracyMetrics
     kpis: KpiScorecard | None = None
     cash: CashPosition | None = None
+    forward: ForwardCash | None = None
     value: ValueMetrics | None = None
     ground_truth: list[GroundTruth]

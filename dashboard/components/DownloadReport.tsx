@@ -64,6 +64,11 @@ function summaryText(data: DashboardRun): string {
     `Detection recall: ${formatPct(data.exception_recall)}`,
     `Settled in bank: ${formatInr(data.cash.closed_bank_net)}`,
     `Still in transit: ${formatInr(data.cash.in_flight_amount)}`,
+    `Expected, not credited: ${formatInr(data.cash.expected_not_credited ?? "0.00")}`,
+    `Bank unmatched: ${formatInr(data.cash.unmatched_bank_net ?? "0.00")}`,
+    `Ledger expected: ${formatInr(data.cash.expected_ledger_gross ?? "0.00")}`,
+    `Bank credited: ${formatInr(data.cash.bank_credited_total ?? "0.00")}`,
+    `Variance: ${formatInr(data.cash.variance ?? "0.00")}`,
     `Overdue items: ${data.cash.aged_out_count}`,
   ];
   if (data.accuracy) {

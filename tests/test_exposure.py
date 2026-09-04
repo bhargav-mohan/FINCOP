@@ -18,3 +18,5 @@ def test_in_flight_gross_equals_sum_of_exception_exposure():
     cash = compute_cash(result)
     assert cash.in_flight_gross == total
     assert cash.in_flight_count == len(result.exceptions)
+    assert cash.closed_bank_net + cash.unmatched_bank_net == cash.bank_credited_total
+    assert cash.variance == cash.expected_ledger_gross - cash.bank_credited_total

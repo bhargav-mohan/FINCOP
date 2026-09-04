@@ -8,7 +8,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from finance_controller.agent.llm import OPENROUTER_GLM_MODEL, ZAI_GLM_MODEL
+OPENROUTER_GLM_MODEL = "z-ai/glm-5.2"
+ZAI_GLM_MODEL = "glm-5.2"
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
 

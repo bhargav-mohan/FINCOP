@@ -34,6 +34,7 @@ def test_page_streams_review_behind_inner_suspense():
     assert "ReviewPending" in src
     assert "ReviewRun" in src
     assert "KpiStrip" in (DASHBOARD / "components" / "ReviewRun.tsx").read_text(encoding="utf-8")
+    assert "CashBooks" in (DASHBOARD / "components" / "ReviewRun.tsx").read_text(encoding="utf-8")
     assert "requestId" in src
     assert "force-no-store" in src
 

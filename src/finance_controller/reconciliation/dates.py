@@ -20,3 +20,17 @@ def banking_days_between(start: date, end: date, holidays: frozenset[date]) -> i
         if is_banking_day(cur, holidays):
             n += step
     return n
+
+
+def add_banking_days(start: date, n: int, holidays: frozenset[date]) -> date:
+    """Shift `start` by n banking days. n=0 returns start even if it is a holiday."""
+    if n == 0:
+        return start
+    step = 1 if n > 0 else -1
+    left = abs(n)
+    cur = start
+    while left:
+        cur = cur + timedelta(days=step)
+        if is_banking_day(cur, holidays):
+            left -= 1
+    return cur

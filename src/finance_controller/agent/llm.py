@@ -18,13 +18,11 @@ class LlmBudgetExhausted(LlmUnavailable):
 _GEMINI_OPENAI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 _ZAI_BASE = "https://api.z.ai/api/paas/v4/"
-OPENROUTER_GLM_MODEL = "z-ai/glm-5.2"
-ZAI_GLM_MODEL = "glm-5.2"
 
-# None = no wall-clock cap. A failed call still hands over to rules after
-# LLM_MAX_RETRIES; a stalled provider can hang a run until it returns.
-LLM_TIMEOUT_SEC: float | None = None
-GLM_TIMEOUT_SEC: float | None = None
+# Per-call wall-clock cap. A timeout or failed call hands over to rules after
+# LLM_MAX_RETRIES. The engine and validator never wait on this path.
+LLM_TIMEOUT_SEC: float | None = 12.0
+GLM_TIMEOUT_SEC: float | None = 12.0
 LLM_MAX_RETRIES = 1
 LLM_BUDGET_SEC: float | None = None
 

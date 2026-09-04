@@ -108,7 +108,20 @@ export type DashboardRun = {
     in_flight_amount: string;
     in_flight_count?: number;
     aged_out_count: number;
+    bank_credited_total?: string;
+    unmatched_bank_net?: string;
+    expected_ledger_gross?: string;
+    settled_ledger_gross?: string;
+    expected_not_credited?: string;
+    variance?: string;
   };
+  forward?: {
+    as_of: string;
+    lag_days: number;
+    due_within_window: string;
+    stuck_past_window: string;
+    expected_by_day?: Record<string, string>;
+  } | null;
   accuracy?: {
     false_positives: number;
     false_negatives: number;
