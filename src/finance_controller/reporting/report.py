@@ -26,7 +26,8 @@ from finance_controller.models import (
 
 ASSUMED_MINUTES_PER_ITEM = 8
 VALUE_ASSUMPTION = (
-    "Estimate assumes 8 analyst minutes per auto-closed item; not a measured time study."
+    "Estimate assumes 8 analyst minutes per loop closed by rules "
+    "(engine + investigator), excluding LLM; not a measured time study."
 )
 from finance_controller.reconciliation.engine import (
     EngineResult,
@@ -34,6 +35,7 @@ from finance_controller.reconciliation.engine import (
     predicted_exception_keys,
 )
 from finance_controller.reporting.exposure import exception_exposure
+from finance_controller.reporting.kpis import compute_kpis
 
 
 def group_match_rate(matched: int, exception_count: int) -> float:
@@ -127,6 +129,8 @@ def compute_cash(result: EngineResult) -> CashPosition:
 def compute_value(
     investigations: list[Investigation],
     cash: CashPosition | None,
+    *,
+    closed_count: int,
 ) -> ValueMetrics:
     auto_closed = sum(1 for item in investigations if item.action == AgentAction.RECONCILE)
     by_llm = sum(
@@ -139,6 +143,8 @@ def compute_value(
     total = auto_closed + sent
     rate = (auto_closed / total) if total else 0.0
     in_flight = cash.in_flight_gross if cash else Decimal("0.00")
+    engine_closed = max(closed_count - auto_closed, 0)
+    rules_closed = engine_closed + by_rules
     return ValueMetrics(
         auto_closed_by_ai=auto_closed,
         auto_closed_by_rules=by_rules,
@@ -146,7 +152,7 @@ def compute_value(
         sent_to_analyst=sent,
         auto_close_rate=round(rate, 4),
         in_flight_amount=in_flight,
-        est_analyst_minutes_saved=auto_closed * ASSUMED_MINUTES_PER_ITEM,
+        est_analyst_minutes_saved=rules_closed * ASSUMED_MINUTES_PER_ITEM,
         assumed_minutes_per_item=ASSUMED_MINUTES_PER_ITEM,
         assumption=VALUE_ASSUMPTION,
     )
@@ -163,6 +169,8 @@ def build_report(
     agent_warnings: list[str] | None = None,
     batch_source: BatchSource = BatchSource.GENERATED,
     source_files: dict[str, str] | None = None,
+    exceptions_before: int | None = None,
+    elapsed_ms: int = 0,
 ) -> Report:
     matched = result.closed_group_count
     exceptions = result.exceptions
@@ -170,6 +178,14 @@ def build_report(
     rate = group_match_rate(matched, len(exceptions))
     investigations = investigations or []
     cash = compute_cash(result)
+    match_precision = compute_match_precision(ground_truth, result.closed_keys)
+    kpis = compute_kpis(
+        result=result,
+        ground_truth=ground_truth,
+        exceptions_before=len(exceptions) if exceptions_before is None else exceptions_before,
+        elapsed_ms=elapsed_ms,
+        match_precision=match_precision,
+    )
     return Report(
         run=RunMeta(
             seed=config.seed,
@@ -194,8 +210,9 @@ def build_report(
         exceptions=exceptions,
         investigations=investigations,
         accuracy=compute_accuracy(ground_truth, result),
+        kpis=kpis,
         cash=cash,
-        value=compute_value(investigations, cash),
+        value=compute_value(investigations, cash, closed_count=matched),
         ground_truth=ground_truth,
     )
 
@@ -236,6 +253,27 @@ def render_text(report: Report) -> str:
         "(a false exception costs review time; a false close corrupts the ledger)  "
         f"false_positives={acc.false_positives}  false_negatives={acc.false_negatives}"
     )
+    kpis = report.kpis
+    if kpis:
+        mp = "n/a" if kpis.match_precision is None else f"{kpis.match_precision:.2%}"
+        ep = "n/a" if kpis.explanation_precision is None else f"{kpis.explanation_precision:.2%}"
+        mp_gate = (
+            "pass"
+            if kpis.match_precision_pass
+            else ("n/a" if kpis.match_precision_pass is None else "fail")
+        )
+        ep_gate = (
+            "pass"
+            if kpis.explanation_precision_pass
+            else ("n/a" if kpis.explanation_precision_pass is None else "fail")
+        )
+        console.print(
+            f"kpis  match_precision={mp} (≥{kpis.match_precision_threshold:.0%} {mp_gate})  "
+            f"exceptions {kpis.exceptions_before}→{kpis.exceptions_after} "
+            f"reduced={kpis.exceptions_reduced}  "
+            f"elapsed_ms={kpis.elapsed_ms}  "
+            f"explanation_precision={ep} (≥{kpis.explanation_precision_threshold:.0%} {ep_gate})"
+        )
     console.print(f"sources: {report.run.source_counts}")
     if report.cash:
         cash = report.cash

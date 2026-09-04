@@ -34,6 +34,10 @@ def test_detect_role_from_headers_and_name():
     assert detect_role("payments.csv", ["payment_id", "amount", "customer"]) == FileRole.LEDGER
     assert detect_role("settlements.csv", ["settlement_id", "payment_ids", "gross_amount"]) == FileRole.PSP
     assert detect_role("gstr.csv", ["invoice_id", "taxable_value", "gst_amount"]) == FileRole.TAX
+    assert detect_role(
+        "invoices.csv",
+        ["invoice_id", "payment_id", "taxable_value", "gst_rate", "gst_amount", "hsn"],
+    ) == FileRole.TAX
 
 
 def test_ingest_directory_of_csvs(tmp_path: Path, csv_fixture_dir: Path):
@@ -70,6 +74,13 @@ def test_ingest_zip_runs_controller(tmp_path: Path, csv_fixture_dir: Path):
     assert payload["exception_count"] == len(payload["exceptions"])
     assert payload["ingestion"]["files"]
     assert payload["tax"] is not None
+
+
+def test_ingest_skips_generator_scripts_quietly(csv_fixture_dir: Path):
+    ingested = ingest_zip(csv_fixture_dir)
+    assert (csv_fixture_dir / "generate.py").exists()
+    assert not any("generate.py" in w for w in ingested.warnings)
+    assert len(ingested.batch.ledger) >= 50
 
 
 def test_ingest_rejects_incomplete_zip(tmp_path: Path):

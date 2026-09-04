@@ -13,6 +13,20 @@ def csv_fixture_dir() -> Path:
 
 
 @pytest.fixture(autouse=True)
+def isolate_llm_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests must not pick up a real key from the developer's .env."""
+    for name in (
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "ZAI_API_KEY",
+        "GLM_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
 def isolate_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point every test at its own SQLite file.
 

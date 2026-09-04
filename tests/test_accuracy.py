@@ -6,6 +6,7 @@ from finance_controller.data.synthetic import generate
 from finance_controller.models import ExpectedStatus, GroundTruth
 from finance_controller.reconciliation.engine import predicted_exception_keys, reconcile
 from finance_controller.reporting.report import compute_accuracy, compute_match_precision
+from finance_controller.reporting.kpis import compute_explanation_precision
 
 # seed, records, exceptions, resolvable, edges
 GRID = [
@@ -41,9 +42,9 @@ def test_seeded_run_detects_injected_exceptions_with_high_f1():
 def test_detection_is_exact_on_every_seeded_config(seed, records, excs, resolvable, edges):
     """Detection must be exact end to end: nothing missed, nothing over-flagged.
 
-    The resolvable cases are built to defeat the deterministic tiers, so the
-    engine alone over-flags them by design. What must be exact is the full loop:
-    engine, then the agent whose every close goes through the validator.
+    The resolvable cases put identity in the bank memo. The engine recovers a
+    unique token; the agent still cannot invent a close. What must be exact is
+    the full loop: engine, then any agent close through the validator.
     """
     config = ReconConfig(
         seed=seed,
@@ -71,6 +72,9 @@ def test_detection_is_exact_on_every_seeded_config(seed, records, excs, resolvab
     assert metrics.f1 == 1.0
     assert metrics.false_positives == 0
     assert metrics.false_negatives == 0
+    assert compute_match_precision(batch.ground_truth, result.closed_keys) >= 0.90
+    assert compute_explanation_precision(batch.ground_truth, result) >= 0.90
+    assert all(exc.hypothesis and exc.hypothesis.explanation for exc in result.exceptions)
 
 
 def test_engine_alone_never_misses_before_the_agent_runs():

@@ -62,6 +62,9 @@ def test_recon_explodes_to_canonical_and_groups_by_settlement_id():
     assert len(adapted.bank) == 1
     assert adapted.bank[0]["utr"] == "UTR0001"
     assert adapted.bank[0]["credited_amount"] == "1464.60"
+    assert adapted.bank[0]["payment_reference"] == "setl_ONE"
+    assert adapted.bank[0]["batch_id"] == "setl_ONE"
+    assert adapted.batch.bank[0].reference == "setl_ONE"
     assert adapted.batch.psp[0].extra["settlement_id"] == "setl_ONE"
     assert adapted.batch.psp[0].batch_id == "setl_ONE"
     assert adapted.batch.bank[0].batch_id == "setl_ONE"

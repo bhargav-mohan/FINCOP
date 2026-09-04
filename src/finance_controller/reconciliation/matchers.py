@@ -7,6 +7,13 @@ from decimal import Decimal
 from finance_controller.config import ReconConfig
 from finance_controller.models import MatchResult, MatchTier, PaymentStatus, Record, Source
 from finance_controller.reconciliation.dates import banking_days_between
+from finance_controller.reconciliation.identity import (
+    compact_reference,
+    identity_keys,
+    names_compatible,
+    pair_unambiguous_by_keys,
+    payee_key,
+)
 
 
 def _mid(prefix: str, n: int) -> str:
@@ -20,34 +27,23 @@ def expected_net(record: Record, fee_rate: Decimal) -> Decimal:
     return (record.amount - fee).quantize(Decimal("0.01"))
 
 
-def payee_key(record: Record) -> str:
-    return (record.payee or "").strip().upper()
-
-
 def pair_unambiguous(
     left: Iterable[Record],
     right: Iterable[Record],
     key_fn: Callable[[Record], object],
 ) -> list[tuple[Record, Record]]:
     """Pair only when the key is unique on both sides. Never first-come-first-serve."""
-    lmap: dict[object, list[Record]] = defaultdict(list)
-    rmap: dict[object, list[Record]] = defaultdict(list)
-    for rec in left:
-        key = key_fn(rec)
-        if key in ("", None, ()):
-            continue
-        lmap[key].append(rec)
-    for rec in right:
-        key = key_fn(rec)
-        if key in ("", None, ()):
-            continue
-        rmap[key].append(rec)
-    pairs: list[tuple[Record, Record]] = []
-    for key, ls in lmap.items():
-        rs = rmap.get(key, [])
-        if len(ls) == 1 and len(rs) == 1:
-            pairs.append((ls[0], rs[0]))
-    return pairs
+    return pair_unambiguous_by_keys(left, right, lambda rec: (key_fn(rec),))
+
+
+def _exact_keys(record: Record) -> list[object]:
+    keys: list[object] = [
+        (compact, record.amount, record.currency) for compact in identity_keys(record)
+    ]
+    payee = payee_key(record)
+    if payee:
+        keys.append(("payee", payee, record.amount, record.currency))
+    return keys
 
 
 def _emit(
@@ -81,6 +77,41 @@ def is_matchable(record: Record) -> bool:
     return record.status == PaymentStatus.SUCCESS
 
 
+def _pair_unique_compatible_payee(
+    left: list[Record], right: list[Record]
+) -> list[tuple[Record, Record]]:
+    """Pair unused rows whose names are compatible and whose amount+currency is unique."""
+    left_by = {r.id: r for r in left if payee_key(r)}
+    right_by = {r.id: r for r in right if payee_key(r)}
+    left_to: dict[str, set[str]] = {}
+    right_to: dict[str, set[str]] = {}
+    for a in left_by.values():
+        for b in right_by.values():
+            if a.currency != b.currency or a.amount != b.amount:
+                continue
+            if payee_key(a) == payee_key(b):
+                continue
+            if not names_compatible(a.payee, b.payee):
+                continue
+            left_to.setdefault(a.id, set()).add(b.id)
+            right_to.setdefault(b.id, set()).add(a.id)
+    pairs: list[tuple[Record, Record]] = []
+    used_l: set[str] = set()
+    used_r: set[str] = set()
+    for lid, rids in left_to.items():
+        if len(rids) != 1:
+            continue
+        rid = next(iter(rids))
+        if len(right_to.get(rid, ())) != 1:
+            continue
+        if lid in used_l or rid in used_r:
+            continue
+        used_l.add(lid)
+        used_r.add(rid)
+        pairs.append((left_by[lid], right_by[rid]))
+    return pairs
+
+
 def exact_matches(records: list[Record], used: set[str]) -> list[MatchResult]:
     available = [r for r in records if r.id not in used and is_matchable(r)]
     matches: list[MatchResult] = []
@@ -95,25 +126,20 @@ def exact_matches(records: list[Record], used: set[str]) -> list[MatchResult]:
         (Source.BANK, Source.PSP),
     ):
         left, right = unused(left_src), unused(right_src)
-        for a, b in pair_unambiguous(
-            left, right, lambda r: (r.reference, r.amount, r.currency)
-        ):
-            n = _emit(
-                matches,
-                used,
-                "E",
-                n,
-                a,
-                b,
-                MatchTier.EXACT,
-                "same reference, amount, and currency",
+        for a, b in pair_unambiguous_by_keys(left, right, _exact_keys):
+            if a.id in used or b.id in used:
+                continue
+            shared_ref = compact_reference(a.reference) == compact_reference(b.reference)
+            reason = (
+                "same reference, amount, and currency"
+                if shared_ref
+                else f"same payee ({payee_key(a) or a.payee}), amount, and currency"
             )
+            n = _emit(matches, used, "E", n, a, b, MatchTier.EXACT, reason)
         left, right = unused(left_src), unused(right_src)
-        for a, b in pair_unambiguous(
-            left,
-            right,
-            lambda r: (payee_key(r), r.amount, r.currency) if payee_key(r) else "",
-        ):
+        for a, b in _pair_unique_compatible_payee(left, right):
+            if a.id in used or b.id in used:
+                continue
             n = _emit(
                 matches,
                 used,
@@ -122,7 +148,7 @@ def exact_matches(records: list[Record], used: set[str]) -> list[MatchResult]:
                 a,
                 b,
                 MatchTier.EXACT,
-                f"same payee ({a.payee}), amount, and currency",
+                f"compatible payee ({a.payee} ~ {b.payee}), amount, and currency",
             )
     return matches
 
@@ -155,7 +181,7 @@ def _pick_unique(
         if c.id not in claimed_counterparts and _tolerant_hit(bank, c, config)
     ]
     if payee_key(bank):
-        payee_hits = [c for c in hits if payee_key(c) == payee_key(bank)]
+        payee_hits = [c for c in hits if names_compatible(bank.payee, c.payee)]
         if payee_hits:
             hits = payee_hits
         elif any(payee_key(c) for c in hits):
@@ -176,11 +202,16 @@ def tolerant_matches(
         key=lambda r: r.id,
     )
     counterparts = [r for r in records if r.source in (Source.LEDGER, Source.PSP) and is_matchable(r)]
-    by_ref: dict[str, list[Record]] = defaultdict(list)
+    by_idkey: dict[str, list[Record]] = defaultdict(list)
     by_payee: dict[str, list[Record]] = defaultdict(list)
     by_utr: dict[str, list[Record]] = defaultdict(list)
+    seen_idkey: dict[str, set[str]] = defaultdict(set)
     for rec in counterparts:
-        by_ref[rec.reference].append(rec)
+        for key in identity_keys(rec):
+            if rec.id in seen_idkey[key]:
+                continue
+            seen_idkey[key].add(rec.id)
+            by_idkey[key].append(rec)
         if payee_key(rec):
             by_payee[payee_key(rec)].append(rec)
         if rec.utr:
@@ -195,9 +226,11 @@ def tolerant_matches(
             continue
         if bank.amount <= 0:
             continue
-        cand = _pick_unique(
-            bank, by_ref.get(bank.reference, []), config, claimed_counterparts
-        )
+        cand = None
+        for key in identity_keys(bank):
+            cand = _pick_unique(bank, by_idkey.get(key, []), config, claimed_counterparts)
+            if cand is not None:
+                break
         if cand is None and bank.utr and len(by_utr.get(bank.utr, [])) == 1:
             cand = _pick_unique(
                 bank, by_utr.get(bank.utr, []), config, claimed_counterparts
@@ -208,6 +241,13 @@ def tolerant_matches(
                 cand = _pick_unique(
                     bank, by_payee.get(payee_key(bank), []), config, claimed_counterparts
                 )
+            if cand is None:
+                similar = [
+                    rec
+                    for rec in counterparts
+                    if rec.id not in claimed_counterparts and names_compatible(bank.payee, rec.payee)
+                ]
+                cand = _pick_unique(bank, similar, config, claimed_counterparts)
         if cand is None:
             continue
         n += 1
@@ -233,7 +273,7 @@ def tolerant_matches(
         used.add(cand.id)
         claimed_counterparts.add(cand.id)
         for rec in counterparts:
-            same_ref = rec.reference == cand.reference
+            same_ref = compact_reference(rec.reference) == compact_reference(cand.reference)
             same_payee = bool(payee_key(cand)) and payee_key(rec) == payee_key(cand)
             if rec.id == cand.id or (same_ref and (same_payee or not payee_key(cand))):
                 claimed_counterparts.add(rec.id)
@@ -261,7 +301,7 @@ def many_to_one_matches(
         if rec.source == Source.PSP:
             psp_by_batch[rec.batch_id].append(rec)
         elif rec.source == Source.LEDGER:
-            ledger_by_batch_ref[(rec.batch_id, rec.reference)].append(rec)
+            ledger_by_batch_ref[(rec.batch_id, compact_reference(rec.reference))].append(rec)
 
     matches: list[MatchResult] = []
     n = 0
@@ -293,7 +333,7 @@ def many_to_one_matches(
         for psp in psp_rows:
             candidates = [
                 led
-                for led in ledger_by_batch_ref.get((batch_id, psp.reference), [])
+                for led in ledger_by_batch_ref.get((batch_id, compact_reference(psp.reference)), [])
                 if led.id not in used
             ]
             if len(candidates) == 1:
@@ -332,12 +372,12 @@ def one_to_many_matches(
     )
     by_key: dict[str, list[Record]] = defaultdict(list)
     for bank in banks:
-        key = bank.split_id or bank.reference
+        key = compact_reference(bank.split_id or bank.reference)
         by_key[key].append(bank)
     psps = [r for r in records if r.source == Source.PSP and is_matchable(r)]
     psp_by_key: dict[str, list[Record]] = defaultdict(list)
     for psp in psps:
-        psp_by_key[psp.split_id or psp.reference].append(psp)
+        psp_by_key[compact_reference(psp.split_id or psp.reference)].append(psp)
 
     matches: list[MatchResult] = []
     n = 0

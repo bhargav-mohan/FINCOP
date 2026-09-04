@@ -5,52 +5,58 @@ import { useState } from "react";
 import { ActionsBar } from "@/components/ActionsBar";
 import { SourceBadge } from "@/components/SourceBadge";
 import { ZipUpload } from "@/components/ZipUpload";
+import { Button } from "@/components/ui/Button";
 import type { BatchSource, DashboardRun } from "@/lib/types";
 
 export function TopBar({
   batchSource,
   sourceFiles,
-  seed,
   error,
   data,
+  processing = false,
 }: {
   batchSource?: BatchSource;
   sourceFiles?: Record<string, string>;
-  seed?: number;
   error?: string;
   data?: DashboardRun;
+  processing?: boolean;
 }) {
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const generated = !batchSource || batchSource === "generated";
-  const repro =
-    generated && seed != null
-      ? `Seed ${seed} · same seed reproduces this batch`
-      : "Same file reproduces this review";
+  const [uploadOpen, setUploadOpen] = useState(!data && !processing);
+  const empty = !data && !processing;
 
   return (
-    <div className="sticky top-0 z-20 -mx-4 -mt-8 border-b border-slate-200 bg-slate-50/85 px-4 py-3 backdrop-blur">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">Settlement review</h1>
-          <p className="text-sm text-slate-500">
-            Match payments to bank credits and list anything that still needs a person.
+    <div className="sticky top-0 z-20 -mx-4 -mt-6 border-b border-line bg-wash/90 px-4 py-4 backdrop-blur sm:-mt-10">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <header className="max-w-xl space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Settlement review</h1>
+          <p className="text-sm text-muted">
+            {processing
+              ? "Matching payments to your bank file. Stay on this page."
+              : data
+                ? "We matched what we could. Anything left needs a person."
+                : "Drop payments, settlements, and the bank file. We match them. You only see leftovers."}
           </p>
-          <p className="text-xs text-slate-500">{repro}</p>
           {batchSource ? <SourceBadge batchSource={batchSource} sourceFiles={sourceFiles} /> : null}
         </header>
         <div className="flex flex-wrap items-center gap-3">
           <ActionsBar data={data} />
-          <button
-            type="button"
-            className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800"
-            onClick={() => setUploadOpen((v) => !v)}
-          >
-            {uploadOpen ? "Hide upload" : "Upload"}
-          </button>
+          {data ? (
+            <Button variant="secondary" onClick={() => setUploadOpen((v) => !v)}>
+              {uploadOpen ? "Hide new files" : "Review new files"}
+            </Button>
+          ) : null}
         </div>
       </div>
-      {uploadOpen ? <div className="mt-3">{<ZipUpload />}</div> : null}
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {uploadOpen && !processing ? (
+        <div className={empty ? "mt-6" : "mt-4"}>
+          <ZipUpload compact={!empty} />
+        </div>
+      ) : null}
+      {error ? (
+        <p className="mt-3 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -198,6 +198,8 @@ def razorpay_recon_to_canonical(rows: list[dict[str, str]]) -> AdapterResult:
                     "customer": customer,
                     "currency": currency,
                     "created": created or settled_date,
+                    "order_id": _cell(row, "order_id"),
+                    "entity_id": _cell(row, "entity_id"),
                     "status": "refunded" if kind == REFUND_TYPE else "success",
                 }
             )
@@ -237,8 +239,11 @@ def razorpay_recon_to_canonical(rows: list[dict[str, str]]) -> AdapterResult:
         }
         parsed_groups.append((sid, lines, meta))
         if any_settled:
+            batched = len(unique_pids) > 1
             bank_rows.append(
                 {
+                    "payment_reference": unique_pids[0] if len(unique_pids) == 1 else sid,
+                    "batch_id": sid if batched else "",
                     "utr": utr,
                     "credited_amount": str(net),
                     "credited_date": settled_date,
@@ -262,6 +267,10 @@ def razorpay_recon_to_canonical(rows: list[dict[str, str]]) -> AdapterResult:
             if not pid:
                 continue
             extra = {"gst_on_mdr": True, "mdr_fee": str(line["mdr"]), "settlement_id": sid}
+            if line.get("order_id"):
+                extra["order_id"] = line["order_id"]
+            if line.get("entity_id") and line["entity_id"] != pid:
+                extra["entity_id"] = line["entity_id"]
             if dup:
                 extra["duplicate_utr"] = True
             if line["status"] == "refunded" or line["net"] <= 0:
@@ -317,7 +326,7 @@ def razorpay_recon_to_canonical(rows: list[dict[str, str]]) -> AdapterResult:
             bank_utr = utr
             narration = f"NEFT CR RAZORPAY SETTLEMENT {sid}"
             if batched:
-                reference = utr or sid
+                reference = sid
             elif unique_pids:
                 reference = unique_pids[0]
             else:

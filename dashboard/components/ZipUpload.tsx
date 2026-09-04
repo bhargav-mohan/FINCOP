@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+import { Button } from "@/components/ui/Button";
 
 const ACCEPT =
   ".csv,.tsv,.json,.xlsx,.xlsm,.zip,text/csv,application/json,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -28,52 +30,105 @@ function labelFor(files: File[]): string {
   if (files.length === 1) {
     return files[0].name;
   }
-  return `${files.length} files selected`;
+  return `${files.length} files ready`;
 }
 
-export function ZipUpload() {
-  const [files, setFiles] = useState<File[]>([]);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const [dragOver, setDragOver] = useState(false);
+type UploadPayload = { error?: string; uploadId?: string };
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!files.length) {
-      setError("Choose files or a folder first.");
-      return;
-    }
+function postFiles(
+  files: File[],
+  onProgress: (pct: number) => void
+): Promise<{ ok: boolean; payload: UploadPayload }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
     const data = new FormData();
     for (const file of files) {
       data.append("files", file);
     }
+    xhr.open("POST", "/api/upload");
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      }
+    };
+    xhr.onload = () => {
+      let payload: UploadPayload = {};
+      try {
+        payload = JSON.parse(xhr.responseText || "{}") as UploadPayload;
+      } catch {
+        payload = {};
+      }
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300 && Boolean(payload.uploadId),
+        payload,
+      });
+    };
+    xhr.onerror = () => reject(new Error("network"));
+    xhr.send(data);
+  });
+}
+
+function buttonLabel(pending: boolean, phase: "idle" | "upload" | "review", progress: number | null): string {
+  if (!pending) {
+    return "Start review";
+  }
+  if (phase === "review") {
+    return "Matching your files…";
+  }
+  if (progress != null && progress < 100) {
+    return `Uploading ${progress}%`;
+  }
+  return "Uploading…";
+}
+
+export function ZipUpload({ compact = false }: { compact?: boolean }) {
+  const [files, setFiles] = useState<File[]>([]);
+  const [pending, setPending] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "upload" | "review">("idle");
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!files.length) {
+      setError("Add a ZIP, Excel file, or the CSVs first.");
+      return;
+    }
     setPending(true);
+    setPhase("upload");
+    setProgress(0);
     setError("");
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: data });
-      const payload = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        uploadId?: string;
-      };
-      if (!res.ok || !payload.uploadId) {
-        setError(payload.error || "Upload failed. Try CSV, Excel, a folder, or a ZIP.");
+      const { ok, payload } = await postFiles(files, setProgress);
+      if (!ok || !payload.uploadId) {
+        setError(payload.error || "Could not upload. Try a ZIP, Excel, a folder, or separate CSVs.");
         setPending(false);
+        setPhase("idle");
+        setProgress(null);
         return;
       }
+      setProgress(100);
+      setPhase("review");
       const next = new URLSearchParams();
       next.set("source", "zip");
       next.set("uploadId", payload.uploadId);
-      window.location.assign(`/?${next.toString()}`);
+      next.set("n", String(Date.now()));
+      window.location.href = `/?${next.toString()}`;
     } catch {
-      setError("Upload failed. Try again.");
+      setError("Could not upload. Check the connection and try again.");
       setPending(false);
+      setPhase("idle");
+      setProgress(null);
     }
   }
 
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+      className={compact ? "space-y-3" : "space-y-4"}
       onDragOver={(e) => {
         e.preventDefault();
         setDragOver(true);
@@ -88,73 +143,126 @@ export function ZipUpload() {
         }
       }}
     >
-      <p className="text-sm text-slate-500">
-        Payments, settlements, and bank can be three separate CSVs. Select all of them in one
-        upload (hold Cmd/Ctrl to pick multiple), or choose the folder that contains them.
-      </p>
+      {!compact ? (
+        <ol className="grid gap-2 text-sm text-muted sm:grid-cols-3">
+          <li>
+            <span className="font-medium text-ink">1. Drop files</span>
+            <span className="block">ZIP, Excel, a folder, or CSVs.</span>
+          </li>
+          <li>
+            <span className="font-medium text-ink">2. We match them</span>
+            <span className="block">Payments to settlements to the bank.</span>
+          </li>
+          <li>
+            <span className="font-medium text-ink">3. You finish leftovers</span>
+            <span className="block">Only unmatched items land here.</span>
+          </li>
+        </ol>
+      ) : null}
+
+      <input
+        ref={fileInput}
+        className="sr-only"
+        type="file"
+        accept={ACCEPT}
+        multiple
+        disabled={pending}
+        onChange={(e) => {
+          if (e.target.files?.length) {
+            setFiles(Array.from(e.target.files));
+            setError("");
+          }
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={folderInput}
+        className="sr-only"
+        type="file"
+        multiple
+        disabled={pending}
+        {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+        onChange={(e) => {
+          if (e.target.files?.length) {
+            setFiles(Array.from(e.target.files));
+            setError("");
+          }
+          e.target.value = "";
+        }}
+      />
+
       <div
-        className={`flex flex-wrap items-end gap-3 rounded-md border border-dashed p-3 ${
-          dragOver ? "border-slate-500 bg-slate-50" : "border-slate-200"
+        className={`rounded-uber border-2 border-dashed bg-white px-4 py-8 text-center sm:px-8 ${
+          dragOver ? "border-ink bg-wash" : "border-line"
         }`}
       >
-        <label className="flex flex-col text-sm">
-          <span className="mb-1 text-slate-500">Files</span>
-          <input
-            className="text-sm"
-            type="file"
-            accept={ACCEPT}
-            multiple
-            onChange={(e) => {
-              if (e.target.files?.length) {
-                setFiles((prev) => mergeFiles(prev, e.target.files as FileList));
-                setError("");
-              }
-            }}
-          />
-        </label>
-        <label className="flex flex-col text-sm">
-          <span className="mb-1 text-slate-500">Folder</span>
-          <input
-            className="text-sm"
-            type="file"
-            multiple
-            {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
-            onChange={(e) => {
-              if (e.target.files?.length) {
-                setFiles((prev) => mergeFiles(prev, e.target.files as FileList));
-                setError("");
-              }
-            }}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-        >
-          {pending ? "Uploading..." : "Upload"}
-        </button>
+        <p className="text-base font-medium text-ink">Drop payments, settlements, and the bank file</p>
+        <p className="mt-1 text-sm text-muted">
+          One ZIP or Excel workbook is enough. Separate CSVs work too. We detect encoding and delimiters.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <Button type="button" disabled={pending} onClick={() => fileInput.current?.click()}>
+            Choose files
+          </Button>
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => folderInput.current?.click()}>
+            Choose folder
+          </Button>
+        </div>
       </div>
+
       {files.length ? (
-        <div className="text-xs text-slate-500">
-          <p>
-            {labelFor(files)}
-            <button type="button" className="ml-2 underline" onClick={() => setFiles([])}>
-              Clear
-            </button>
-          </p>
-          <ul className="mt-1 list-inside list-disc">
-            {files.map((file) => (
+        <div className="rounded-uber border border-line bg-white px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium text-ink">{labelFor(files)}</p>
+            {!pending ? (
+              <Button variant="ghost" onClick={() => setFiles([])}>
+                Clear
+              </Button>
+            ) : null}
+          </div>
+          <ul className="mt-2 max-h-32 overflow-auto text-sm text-muted">
+            {files.slice(0, 8).map((file) => (
               <li key={`${(file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name}:${file.size}`}>
                 {(file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name}
               </li>
             ))}
+            {files.length > 8 ? <li>+{files.length - 8} more</li> : null}
           </ul>
         </div>
-      ) : (
-        <p className="text-xs text-slate-400">Or drop the three files here.</p>
-      )}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      ) : null}
+
+      {pending && progress != null ? (
+        <div
+          className="h-1.5 overflow-hidden rounded-full bg-line"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+          aria-label="Upload progress"
+        >
+          <div className="h-full bg-ink" style={{ width: `${progress}%` }} />
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending || !files.length}>
+          {buttonLabel(pending, phase, progress)}
+        </Button>
+        <p className="text-sm text-muted" aria-live="polite">
+          {pending
+            ? phase === "review"
+              ? "Uploaded. Matching now — this can take a minute."
+              : "Sending files…"
+            : files.length
+              ? "Ready when you are."
+              : "Nothing uploaded yet."}
+        </p>
+      </div>
+      {error ? (
+        <p className="text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

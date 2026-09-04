@@ -67,26 +67,42 @@ export function humanizeSource(value: string): string {
 
 export function friendlyWarning(raw: string): string | null {
   const text = raw.toLowerCase();
+  // "not settled" contains "not set" — check payouts before any key-missing heuristic.
+  if (text.includes("not settled")) {
+    return "Some payouts had not settled yet, so no bank credit was expected for them.";
+  }
   if (text.includes("503") || text.includes("high demand") || text.includes("overloaded")) {
-    return "Gemini is busy right now. Rules finished the leftovers. Wait a minute and run again, or set GEMINI_MODEL=gemini-3.6-flash in .env.";
+    return "The model provider is busy right now. Rules finished the leftovers. Wait a minute and run again.";
   }
   if (text.includes("quota") || text.includes("429") || text.includes("resource_exhausted")) {
-    return "Gemini's free quota was used up, so rules finished the leftovers. Wait about a minute and run again, or raise the quota in Google AI Studio.";
+    return "The model quota was used up, so rules finished the leftovers. Wait about a minute and run again.";
   }
-  if (text.includes("api key") || text.includes("gemini_api_key") || text.includes("not set")) {
+  if (text.includes("budget") || text.includes("exhausted") || text.includes("time cap")) {
+    return "GLM hit the time cap for this review. Rules finished the remaining leftovers.";
+  }
+  if (text.includes("timed out") || text.includes("timeout")) {
+    return "GLM 5.2 took too long on a leftover. Rules finished the rest.";
+  }
+  if (text.includes("openrouter_api_key") || text.includes("z-ai/glm") || text.includes("zai_api_key")) {
+    return "No GLM key loaded. Add OPENROUTER_API_KEY (or ZAI_API_KEY) to the repo .env and restart the dashboard.";
+  }
+  if (
+    text.includes("gemini_api_key") ||
+    text.includes("google_api_key")
+  ) {
     return "No Gemini key loaded. Add GEMINI_API_KEY to the repo .env and restart the dashboard.";
   }
+  if (text.includes("api key")) {
+    return "No LLM key loaded. Add OPENROUTER_API_KEY for GLM 5.2, or GEMINI_API_KEY, then restart the dashboard.";
+  }
   if (text.includes("model") && text.includes("not found")) {
-    return "The Gemini model name in .env was not found. Set GEMINI_MODEL=gemini-3.6-flash.";
+    return "The model name in .env was not found. For GLM 5.2 set GLM_MODEL=z-ai/glm-5.2 and LLM_PROVIDER=glm.";
   }
   if (text.includes("hypotheses came from rules")) {
     return null;
   }
   if (text.includes("llm") || text.includes("rule engine") || text.includes("leftovers stay")) {
     return "The AI assistant was unavailable, so leftovers were reviewed by built-in rules instead.";
-  }
-  if (text.includes("not settled")) {
-    return "Some payouts had not settled yet, so no bank credit was expected for them.";
   }
   if (text.includes("no tax") || (text.includes("tax") && text.includes("skipped"))) {
     return null;
@@ -126,6 +142,26 @@ export function formatInr(value: string | number): string {
 
 export function formatPct(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
+}
+
+export function formatMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "—";
+  }
+  if (ms < 1000) {
+    return `${Math.round(ms)} ms`;
+  }
+  return `${(ms / 1000).toFixed(2)} s`;
+}
+
+export function gateLabel(passed: boolean | null | undefined): "Pass" | "Fail" | "n/a" {
+  if (passed === true) {
+    return "Pass";
+  }
+  if (passed === false) {
+    return "Fail";
+  }
+  return "n/a";
 }
 
 export function confidenceLabel(value: number | null | undefined): "High" | "Medium" | "Low" | null {

@@ -72,6 +72,19 @@ export type StoreHistory = {
   notes?: Record<string, { author: string; note: string; assignee: string; resolved_at: string | null }>;
 };
 
+export type KpiScorecard = {
+  match_precision: number | null;
+  match_precision_threshold: number;
+  match_precision_pass: boolean | null;
+  exceptions_before: number;
+  exceptions_after: number;
+  exceptions_reduced: number;
+  elapsed_ms: number;
+  explanation_precision: number | null;
+  explanation_precision_threshold: number;
+  explanation_precision_pass: boolean | null;
+};
+
 export type DashboardRun = {
   error?: string;
   seed: number;
@@ -89,6 +102,7 @@ export type DashboardRun = {
   baseline_match_rate: number;
   advanced_match_rate: number;
   llm_used: boolean;
+  kpis?: KpiScorecard;
   cash: {
     closed_bank_net: string;
     in_flight_amount: string;

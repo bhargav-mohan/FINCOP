@@ -7,9 +7,9 @@ import { Section } from "./ui/Section";
 export function RunHistory({ store }: { store?: StoreHistory }) {
   if (!store?.available) {
     return (
-      <Section title="Run history">
-        <p className="text-sm text-slate-500">
-          History is stored locally in SQLite. It will appear after the first successful review of this dataset.
+      <Section title="Earlier runs">
+        <p className="text-sm text-muted">
+          History is saved on this machine. It shows up after the first successful review of this file.
         </p>
       </Section>
     );
@@ -17,31 +17,31 @@ export function RunHistory({ store }: { store?: StoreHistory }) {
   const runs = store.recent_runs;
   if (!runs.length) {
     return (
-      <Section title="Run history">
-        <p className="text-sm text-slate-500">
-          Re-review the same dataset to build aging and repeat-offender history. A new seed starts a new dataset.
+      <Section title="Earlier runs">
+        <p className="text-sm text-muted">
+          Review the same upload again to see aging. A different file starts a new history.
         </p>
       </Section>
     );
   }
   return (
-    <Section title="Run history" subtitle="Prior reviews of this same dataset, newest first.">
+    <Section title="Earlier runs" subtitle="Prior reviews of this same file, newest first.">
       <Panel className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-line bg-wash text-xs text-muted">
             <tr>
               <th className="px-3 py-2 font-medium">When</th>
-              <th className="px-3 py-2 font-medium">Reconciled</th>
-              <th className="px-3 py-2 font-medium">Needs review</th>
-              <th className="px-3 py-2 font-medium">In transit</th>
+              <th className="px-3 py-2 font-medium">Matched</th>
+              <th className="px-3 py-2 font-medium">Needs you</th>
+              <th className="px-3 py-2 font-medium">Waiting</th>
               <th className="px-3 py-2 font-medium">Precision</th>
               <th className="px-3 py-2 font-medium">Recall</th>
             </tr>
           </thead>
           <tbody>
             {runs.map((run) => (
-              <tr key={run.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-3 py-2 text-slate-600">{run.created_at.slice(0, 19).replace("T", " ")}</td>
+              <tr key={run.id} className="border-b border-line last:border-0">
+                <td className="px-3 py-2 text-muted">{run.created_at.slice(0, 19).replace("T", " ")}</td>
                 <td className="px-3 py-2 tabular-nums">{formatPct(run.match_rate)}</td>
                 <td className="px-3 py-2 tabular-nums">{run.exception_count}</td>
                 <td className="px-3 py-2 tabular-nums">{formatInr(run.in_flight_gross)}</td>
@@ -58,8 +58,8 @@ export function RunHistory({ store }: { store?: StoreHistory }) {
       </Panel>
       {store.repeat_offenders.length ? (
         <div>
-          <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Repeat items</h3>
-          <ul className="mt-1 space-y-1 text-sm text-slate-700">
+          <h3 className="text-sm font-medium text-ink">Still coming back</h3>
+          <ul className="mt-1 space-y-1 text-sm text-ink">
             {store.repeat_offenders.map((item) => (
               <li key={item.key}>
                 {item.key} · {humanizeType(item.type)} · open {item.runs_open} runs ·{" "}

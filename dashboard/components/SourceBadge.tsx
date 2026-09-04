@@ -10,7 +10,7 @@ export function SourceBadge({
 }) {
   const names = sourceFiles ? Object.values(sourceFiles).filter(Boolean) : [];
   return (
-    <p className="text-xs text-slate-500">
+    <p className="text-xs text-muted">
       {sourceLabel(batchSource)}
       {names.length ? ` · ${names.join(", ")}` : null}
     </p>

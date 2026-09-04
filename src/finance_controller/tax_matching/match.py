@@ -7,6 +7,7 @@ from finance_controller.config import ReconConfig
 from finance_controller.models import Record, Source
 from finance_controller.tax_matching.models import TaxLine
 from finance_controller.tax_matching.validate import validate_tax_match
+from finance_controller.reconciliation.identity import compact_reference
 
 
 @dataclass
@@ -37,27 +38,29 @@ class TaxReport:
         return round(len(self.matches) / total, 4) if total else None
 
 
-def _group(items: list[Record], key_fn) -> dict[str, list[Record]]:
-    buckets: dict[str, list[Record]] = defaultdict(list)
-    for rec in items:
-        key = key_fn(rec)
-        if key:
-            buckets[str(key)].append(rec)
-    return buckets
-
-
 def match_tax_lines(
     tax_lines: list[TaxLine],
     ledgers: list[Record],
     config: ReconConfig,
 ) -> TaxReport:
     ledgers = [r for r in ledgers if r.source == Source.LEDGER]
-    by_ref = _group(ledgers, lambda r: r.reference)
+    by_ref: dict[str, list[Record]] = defaultdict(list)
+    for rec in ledgers:
+        for key in {compact_reference(rec.reference), rec.reference}:
+            if key:
+                by_ref[str(key)].append(rec)
     used: set[str] = set()
     report = TaxReport()
 
     for tax in tax_lines:
-        keys = [k for k in (tax.payment_id, tax.invoice_id) if k]
+        keys = []
+        for raw in (tax.payment_id, tax.invoice_id):
+            if not raw:
+                continue
+            keys.append(raw)
+            compacted = compact_reference(raw)
+            if compacted and compacted != raw:
+                keys.append(compacted)
         hits: list[Record] = []
         seen: set[str] = set()
         for key in keys:
@@ -67,8 +70,12 @@ def match_tax_lines(
                 seen.add(rec.id)
                 hits.append(rec)
         if len(hits) > 1:
-            report.ambiguous.append((tax, hits))
-            continue
+            valid = [rec for rec in hits if validate_tax_match(tax, rec, config).valid]
+            if len(valid) == 1:
+                hits = valid
+            else:
+                report.ambiguous.append((tax, hits))
+                continue
         if len(hits) == 1:
             ledger = hits[0]
             check = validate_tax_match(tax, ledger, config)

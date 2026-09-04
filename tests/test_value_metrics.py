@@ -35,10 +35,15 @@ def test_value_metrics_split_equals_investigations_and_states_assumption():
     assert value is not None
     assert value.auto_closed_by_ai + value.sent_to_analyst == len(report.investigations)
     assert value.assumed_minutes_per_item == ASSUMED_MINUTES_PER_ITEM
-    assert value.est_analyst_minutes_saved == value.auto_closed_by_ai * ASSUMED_MINUTES_PER_ITEM
+    assert value.est_analyst_minutes_saved == (
+        result.closed_group_count - value.auto_closed_by_llm
+    ) * ASSUMED_MINUTES_PER_ITEM
+    assert result.closed_group_count >= 1
     assert "8 analyst minutes" in value.assumption
     assert value.assumption == VALUE_ASSUMPTION
-    recomputed = compute_value(bench.investigations, report.cash)
+    recomputed = compute_value(
+        bench.investigations, report.cash, closed_count=result.closed_group_count
+    )
     assert recomputed.auto_closed_by_ai == sum(
         1 for item in bench.investigations if item.action == AgentAction.RECONCILE
     )
@@ -52,3 +57,35 @@ def test_value_metrics_split_equals_investigations_and_states_assumption():
     assert recomputed.sent_to_analyst == sum(
         1 for item in bench.investigations if item.action == AgentAction.ESCALATE
     )
+
+
+def test_minutes_saved_counts_rules_closed_loops_not_llm():
+    from finance_controller.models import Investigation
+
+    investigations = [
+        Investigation(
+            exception_id="X1",
+            decision=AgentAction.RECONCILE,
+            action=AgentAction.RECONCILE,
+            produced_by="rules",
+        ),
+        Investigation(
+            exception_id="X2",
+            decision=AgentAction.RECONCILE,
+            action=AgentAction.RECONCILE,
+            produced_by="llm",
+        ),
+        Investigation(
+            exception_id="X3",
+            decision=AgentAction.ESCALATE,
+            action=AgentAction.ESCALATE,
+            produced_by="rules",
+        ),
+    ]
+    value = compute_value(investigations, None, closed_count=12)
+    assert value.auto_closed_by_rules == 1
+    assert value.auto_closed_by_llm == 1
+    assert value.sent_to_analyst == 1
+    assert value.est_analyst_minutes_saved == 11 * ASSUMED_MINUTES_PER_ITEM
+    assert value.est_analyst_minutes_saved != 12 * ASSUMED_MINUTES_PER_ITEM
+    assert "excluding LLM" in value.assumption

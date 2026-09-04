@@ -11,8 +11,8 @@ export function Panel({
 }) {
   return (
     <div
-      className={`rounded-lg border bg-white ${
-        dashed ? "border-dashed border-slate-300" : "border-slate-200"
+      className={`rounded-uber border bg-white ${
+        dashed ? "border-dashed border-line" : "border-line"
       } ${className}`}
     >
       {children}

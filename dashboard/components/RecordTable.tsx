@@ -3,12 +3,12 @@ import type { DashboardRecord } from "@/lib/types";
 
 export function RecordTable({ records }: { records: DashboardRecord[] }) {
   if (!records.length) {
-    return <p className="text-xs text-slate-500">No source rows attached.</p>;
+    return <p className="text-xs text-muted">No source rows attached.</p>;
   }
   return (
-    <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-uber border border-line bg-white">
       <table className="min-w-full text-left text-xs">
-        <thead className="bg-slate-50 text-slate-500">
+        <thead className="bg-wash text-muted">
           <tr>
             <th className="px-2 py-1 font-medium">Source</th>
             <th className="px-2 py-1 font-medium">Reference</th>
@@ -21,7 +21,7 @@ export function RecordTable({ records }: { records: DashboardRecord[] }) {
         </thead>
         <tbody>
           {records.map((row) => (
-            <tr key={row.id} className="border-t border-slate-100">
+            <tr key={row.id} className="border-t border-line">
               <td className="px-2 py-1">{humanizeType(row.source)}</td>
               <td className="px-2 py-1">{row.reference}</td>
               <td className="px-2 py-1 tabular-nums">
@@ -30,7 +30,7 @@ export function RecordTable({ records }: { records: DashboardRecord[] }) {
               <td className="px-2 py-1">{row.date}</td>
               <td className="px-2 py-1">{row.utr || "—"}</td>
               <td className="px-2 py-1">{row.status}</td>
-              <td className="px-2 py-1 text-slate-600">{row.description || row.payee || "—"}</td>
+              <td className="px-2 py-1 text-muted">{row.description || row.payee || "—"}</td>
             </tr>
           ))}
         </tbody>

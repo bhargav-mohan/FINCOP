@@ -15,4 +15,6 @@ def test_fallback_never_clears_an_exception():
     hyp = rule_hypothesis(exc)
     assert hyp.produced_by == "rules"
     assert hyp.hypothesis_type == ExceptionType.UNMATCHED
+    assert "UNK-1" in hyp.explanation
+    assert "orphan" in hyp.explanation
     assert "auto-clear" not in hyp.suggested_action.lower() or "do not" in hyp.suggested_action.lower()

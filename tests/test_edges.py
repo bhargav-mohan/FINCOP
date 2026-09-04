@@ -136,16 +136,24 @@ def test_late_and_inverted_dates_are_exceptions():
     assert ExceptionType.DATE_INVERTED in types
 
 
-def test_gst_half_up_vs_bankers_and_zero_bug():
-    gross = Decimal("10.05")
-    assert gst_half_up(gross) == Decimal("1.81")
-    assert gst_bankers(gross) == Decimal("1.81")
+def test_gst_half_up_is_the_rule_bankers_only_via_tolerance():
+    """Close gate is half-up ± GST_TOLERANCE (0.05). Bankers is not a second legal value."""
+    from finance_controller.reconciliation.engine import _gst_block
+    from finance_controller.reconciliation.gst import GST_TOLERANCE
+
     split = Decimal("10.25")
     assert gst_half_up(split) == Decimal("1.85")
     assert gst_bankers(split) == Decimal("1.84")
+    assert GST_TOLERANCE == Decimal("0.05")
+    half = _rec(id="L1", source=Source.LEDGER, reference="G", amount=split, gst=gst_half_up(split), extra={"taxable": True})
+    bankers = _rec(id="L2", source=Source.LEDGER, reference="G", amount=split, gst=gst_bankers(split), extra={"taxable": True})
+    over = _rec(id="L3", source=Source.LEDGER, reference="G", amount=split, gst=gst_half_up(split) + Decimal("0.06"), extra={"taxable": True})
+    assert _gst_block([half]) is None
+    assert _gst_block([bankers]) is None  # 0.01 off, inside 0.05
+    assert _gst_block([over]) is not None
     ok = [
-        _rec(id="L1", source=Source.LEDGER, reference="G", amount=Decimal("100.00"), gst=gst_bankers(Decimal("100.00"))),
-        _rec(id="P1", source=Source.PSP, reference="G", amount=Decimal("100.00"), fee=Decimal("2.00"), gst=gst_bankers(Decimal("100.00"))),
+        _rec(id="L1", source=Source.LEDGER, reference="G", amount=Decimal("100.00"), gst=gst_half_up(Decimal("100.00"))),
+        _rec(id="P1", source=Source.PSP, reference="G", amount=Decimal("100.00"), fee=Decimal("2.00"), gst=gst_half_up(Decimal("100.00"))),
         _rec(id="B1", source=Source.BANK, reference="G", amount=Decimal("98.00"), txn_date=date(2026, 1, 11)),
     ]
     bug = [

@@ -1,11 +1,28 @@
+import random
 from datetime import date
 from decimal import Decimal
 
+from finance_controller.agent.orchestrator import orchestrate
 from finance_controller.config import ReconConfig
 from finance_controller.data.synthetic import generate
 from finance_controller.models import ExceptionType, ExpectedStatus, Record, Source
-from finance_controller.reconciliation.engine import reconcile
+from finance_controller.reconciliation.engine import EngineResult, reconcile
 from finance_controller.reconciliation.matchers import exact_matches, many_to_one_matches, tolerant_matches
+
+
+def _closed_groups(result: EngineResult) -> frozenset[frozenset[str]]:
+    return frozenset(frozenset(m.record_ids) for m in result.closed_matches)
+
+
+def _exception_groups(result: EngineResult) -> frozenset[tuple]:
+    return frozenset(
+        (exc.exception_id, exc.exception_type.value, tuple(exc.record_ids), exc.reason)
+        for exc in result.exceptions
+    )
+
+
+def _match_ids(result: EngineResult) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    return tuple((m.match_id, m.tier.value, tuple(m.record_ids)) for m in result.matches)
 
 
 def _rec(**kwargs) -> Record:
@@ -135,7 +152,9 @@ def test_amount_mismatch_is_not_matched():
     ]
     result = reconcile(records, ReconConfig())
     assert result.closed_group_count == 0
-    assert any(e.exception_type == ExceptionType.AMOUNT_MISMATCH for e in result.exceptions)
+    mismatch = next(e for e in result.exceptions if e.exception_type == ExceptionType.AMOUNT_MISMATCH)
+    assert "expected net" in mismatch.reason
+    assert "98.00" in mismatch.reason
 
 
 def test_engine_on_seeded_batch_reports_exceptions():
@@ -152,7 +171,7 @@ def test_engine_on_seeded_batch_reports_exceptions():
     assert expected_exc - predicted == set()
 
 
-def test_engine_does_not_close_resolvable_ambiguous_cases():
+def test_engine_closes_unique_narration_identity():
     from finance_controller.models import CaseCategory
 
     config = ReconConfig(seed=42, num_records=60, inject_exceptions=12, inject_resolvable=6, inject_edges=0)
@@ -160,7 +179,7 @@ def test_engine_does_not_close_resolvable_ambiguous_cases():
     result = reconcile(batch.all_records, config)
     keys = {g.key for g in batch.ground_truth if g.category == CaseCategory.RESOLVABLE_AMBIGUOUS}
     assert len(keys) == 6
-    assert keys.isdisjoint(result.closed_keys)
+    assert keys <= result.closed_keys
 
 
 def test_same_amount_different_payees_are_not_fcfs():
@@ -237,3 +256,46 @@ def test_same_amount_same_payee_is_ambiguous_not_fcfs():
     assert exact == []
     tolerant = tolerant_matches(records, used, ReconConfig())
     assert tolerant == []
+
+
+def test_same_seed_run_twice_yields_identical_groupings():
+    """Reproducibility is groupings, not just counts. Same seed must replay
+    closed groups, leftover groups, and match ids — not merely match_rate."""
+    config = ReconConfig(
+        seed=42, num_records=80, inject_exceptions=12, inject_resolvable=6, inject_edges=16, use_llm=False
+    )
+    first = generate(config)
+    second = generate(config)
+    a = reconcile(first.all_records, config)
+    b = reconcile(second.all_records, config)
+    assert _closed_groups(a) == _closed_groups(b)
+    assert _exception_groups(a) == _exception_groups(b)
+    assert _match_ids(a) == _match_ids(b)
+    assert a.closed_record_ids == b.closed_record_ids
+    assert a.closed_keys == b.closed_keys
+    assert a.closed_group_count == b.closed_group_count
+
+    orchestrate(a, config)
+    orchestrate(b, config)
+    assert _closed_groups(a) == _closed_groups(b)
+    assert _exception_groups(a) == _exception_groups(b)
+    assert a.closed_record_ids == b.closed_record_ids
+
+
+def test_shuffled_input_yields_identical_groupings():
+    """Tier priority is fixed (M→E→T→S) and pairing is unique-or-drop.
+    Shuffling the list must not change who closed with whom — only match
+    emission ids may move. If this fails, claiming has become input-order greedy."""
+    config = ReconConfig(
+        seed=7, num_records=80, inject_exceptions=12, inject_resolvable=6, inject_edges=16, use_llm=False
+    )
+    batch = generate(config)
+    baseline = reconcile(batch.all_records, config)
+    shuffled = list(batch.all_records)
+    random.Random(0).shuffle(shuffled)
+    other = reconcile(shuffled, config)
+    assert _closed_groups(baseline) == _closed_groups(other)
+    assert _exception_groups(baseline) == _exception_groups(other)
+    assert baseline.closed_record_ids == other.closed_record_ids
+    assert baseline.closed_keys == other.closed_keys
+    assert baseline.closed_group_count == other.closed_group_count

@@ -8,19 +8,27 @@ from finance_controller.ingestion.detect import FileRole
 
 _ALIASES: dict[FileRole, dict[str, tuple[str, ...]]] = {
     FileRole.LEDGER: {
-        "payment_id": ("payment_id", "id", "txn_id", "reference"),
+        "payment_id": ("payment_id", "id", "txn_id", "reference", "order_id"),
         "amount": ("amount", "gross", "gross_amount"),
-        "customer": ("customer", "payee", "merchant"),
-        "timestamp": ("timestamp", "txn_date", "date", "created_at", "payment_date"),
+        "customer": ("customer", "payee", "merchant", "buyer"),
+        "timestamp": ("timestamp", "txn_date", "date", "created_at", "payment_date", "invoice_date"),
         "status": ("status", "payment_status"),
         "currency": ("currency", "ccy"),
+        "split_id": ("split_id", "split"),
+        "extra": ("extra", "flags"),
     },
     FileRole.BANK: {
+        "payment_reference": ("payment_reference", "payment_id", "loop_key"),
+        "batch_id": ("batch_id", "batch"),
+        "split_id": ("split_id", "split"),
         "utr": ("utr", "utr_no", "bank_ref"),
         "credited_amount": ("credited_amount", "amount", "credit", "net_amount", "settlement_amount"),
         "credited_date": ("credited_date", "date", "txn_date", "value_date", "settlement_date"),
         "raw_description": ("raw_description", "narration", "description", "remarks", "bank_credit_id"),
         "currency": ("currency", "ccy"),
+        "customer": ("customer", "payee", "merchant", "sender_name", "sender"),
+        "status": ("status",),
+        "extra": ("extra", "flags"),
     },
     FileRole.PSP: {
         "settlement_id": ("settlement_id", "id"),
@@ -32,6 +40,10 @@ _ALIASES: dict[FileRole, dict[str, tuple[str, ...]]] = {
         "utr": ("utr",),
         "settled_date": ("settled_date", "date", "settlement_date"),
         "currency": ("currency", "ccy"),
+        "customer": ("customer", "payee", "merchant"),
+        "status": ("status", "payment_status"),
+        "split_id": ("split_id", "split"),
+        "extra": ("extra", "flags"),
     },
     FileRole.TAX: {
         "invoice_id": ("invoice_id", "invoice", "inv_no"),
@@ -44,8 +56,29 @@ _ALIASES: dict[FileRole, dict[str, tuple[str, ...]]] = {
 }
 
 CANONICAL_FIELDS = {
-    FileRole.LEDGER: ["payment_id", "amount", "customer", "timestamp", "status", "currency"],
-    FileRole.BANK: ["utr", "credited_amount", "credited_date", "raw_description", "currency"],
+    FileRole.LEDGER: [
+        "payment_id",
+        "amount",
+        "customer",
+        "timestamp",
+        "status",
+        "currency",
+        "split_id",
+        "extra",
+    ],
+    FileRole.BANK: [
+        "payment_reference",
+        "batch_id",
+        "split_id",
+        "utr",
+        "credited_amount",
+        "credited_date",
+        "raw_description",
+        "currency",
+        "customer",
+        "status",
+        "extra",
+    ],
     FileRole.PSP: [
         "settlement_id",
         "payment_ids",
@@ -56,6 +89,10 @@ CANONICAL_FIELDS = {
         "utr",
         "settled_date",
         "currency",
+        "customer",
+        "status",
+        "split_id",
+        "extra",
     ],
     FileRole.TAX: ["invoice_id", "payment_id", "taxable_value", "gst_rate", "gst_amount", "hsn"],
 }

@@ -45,8 +45,8 @@ function ageLabel(row: DashboardException): string {
 
 export function ExceptionsTable({
   rows,
-  title = "Needs a person",
-  subtitle = "Items that still need a person. Open Why? for the suggested next step.",
+  title = "Needs you",
+  subtitle = "Open See why for the suggested next step.",
   batchKey,
   totalExposure,
 }: {
@@ -92,10 +92,10 @@ export function ExceptionsTable({
   return (
     <section className="space-y-2">
       <div>
-        <h2 className="text-sm font-medium text-slate-700">{title}</h2>
-        <p className="text-xs text-slate-500">
+        <h2 className="text-base font-semibold tracking-tight text-ink">{title}</h2>
+        <p className="mt-0.5 text-sm text-muted">
           {subtitle}
-          {totalExposure ? ` Exposure ${formatInr(totalExposure)}.` : ""}
+          {totalExposure ? ` Money still at risk: ${formatInr(totalExposure)}.` : ""}
         </p>
       </div>
       {rows.length > 0 ? (
@@ -108,41 +108,41 @@ export function ExceptionsTable({
           shown={sorted.length}
         />
       ) : null}
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-uber border border-line bg-white">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-line bg-wash text-xs text-muted">
             <tr>
-              <th className="px-3 py-2 font-medium">Item</th>
-              <th className="px-3 py-2 font-medium" aria-sort={aria("type")}>
+              <th className="px-3 py-2.5 font-medium">Item</th>
+              <th className="px-3 py-2.5 font-medium" aria-sort={aria("type")}>
                 <button type="button" className="underline-offset-2 hover:underline" onClick={() => toggle("type")}>
-                  Issue {sortKey === "type" ? (dir === "asc" ? "↑" : "↓") : ""}
+                  What happened {sortKey === "type" ? (dir === "asc" ? "↑" : "↓") : ""}
                 </button>
               </th>
-              <th className="px-3 py-2 font-medium" aria-sort={aria("amount")}>
+              <th className="px-3 py-2.5 font-medium" aria-sort={aria("amount")}>
                 <button type="button" className="underline-offset-2 hover:underline" onClick={() => toggle("amount")}>
-                  Amount {sortKey === "amount" ? (dir === "asc" ? "↑" : "↓") : ""}
+                  Money at risk {sortKey === "amount" ? (dir === "asc" ? "↑" : "↓") : ""}
                 </button>
               </th>
-              <th className="px-3 py-2 font-medium" aria-sort={aria("age")}>
+              <th className="px-3 py-2.5 font-medium" aria-sort={aria("age")}>
                 <button type="button" className="underline-offset-2 hover:underline" onClick={() => toggle("age")}>
-                  Open for {sortKey === "age" ? (dir === "asc" ? "↑" : "↓") : ""}
+                  How long {sortKey === "age" ? (dir === "asc" ? "↑" : "↓") : ""}
                 </button>
               </th>
-              <th className="px-3 py-2 font-medium">Details</th>
-              <th className="px-3 py-2 font-medium">Related records</th>
-              <th className="px-3 py-2 font-medium">Confidence</th>
-              <th className="px-3 py-2 font-medium">
-                <span className="sr-only">Explain</span>
+              <th className="px-3 py-2.5 font-medium">Why it is open</th>
+              <th className="px-3 py-2.5 font-medium">Tied to</th>
+              <th className="px-3 py-2.5 font-medium">How sure</th>
+              <th className="px-3 py-2.5 font-medium">
+                <span className="sr-only">See why</span>
               </th>
             </tr>
           </thead>
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td className="px-3 py-4 text-slate-500" colSpan={8}>
+                <td className="px-3 py-6 text-muted" colSpan={8}>
                   {rows.length === 0
-                    ? "Everything reconciled — no unresolved items."
-                    : "No items match this filter."}
+                    ? "Nothing left for you — every item matched."
+                    : "Nothing matches that search. Clear filters to see the list again."}
                 </td>
               </tr>
             ) : (
@@ -184,46 +184,46 @@ function ExceptionRow({
   const whyId = `${row.id}-why`;
   return (
     <>
-      <tr className="border-b border-slate-100 last:border-0">
-        <td className="px-3 py-2 font-medium text-slate-800">{row.id}</td>
-        <td className="px-3 py-2">{humanizeType(row.type)}</td>
-        <td className="px-3 py-2 tabular-nums">{formatInr(row.amount_at_risk ?? "0")}</td>
-        <td className="px-3 py-2 text-slate-600">{ageLabel(row)}</td>
-        <td className="px-3 py-2 text-slate-700">{row.reason}</td>
-        <td className="px-3 py-2 text-slate-600">{row.refs.join(", ")}</td>
-        <td className="px-3 py-2">
+      <tr className="border-b border-line last:border-0">
+        <td className="px-3 py-3 font-medium text-ink">{row.id}</td>
+        <td className="px-3 py-3">{humanizeType(row.type)}</td>
+        <td className="px-3 py-3 tabular-nums">{formatInr(row.amount_at_risk ?? "0")}</td>
+        <td className="px-3 py-3 text-muted">{ageLabel(row)}</td>
+        <td className="px-3 py-3 text-ink">{row.reason}</td>
+        <td className="px-3 py-3 text-muted">{row.refs.join(", ")}</td>
+        <td className="px-3 py-3">
           {conf ? (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{conf}</span>
+            <span className="rounded-full bg-wash px-2 py-0.5 text-xs text-ink">{conf}</span>
           ) : (
-            <span className="text-xs text-slate-400">—</span>
+            <span className="text-xs text-muted">—</span>
           )}
         </td>
-        <td className="px-3 py-2">
+        <td className="px-3 py-3">
           <button
             type="button"
-            className="text-sm text-slate-700 underline-offset-2 hover:underline"
+            className="text-sm font-medium text-ink underline-offset-2 hover:underline"
             aria-expanded={expanded}
             aria-controls={whyId}
             onClick={onToggle}
           >
-            Why?
+            {expanded ? "Hide" : "See why"}
           </button>
         </td>
       </tr>
       {expanded ? (
-        <tr className="border-b border-slate-100 bg-slate-50">
-          <td id={whyId} className="px-3 py-3" colSpan={8}>
-            <div className="space-y-3 text-sm text-slate-700">
+        <tr className="border-b border-line bg-wash">
+          <td id={whyId} className="px-3 py-4" colSpan={8}>
+            <div className="space-y-3 text-sm text-ink">
               <p>{row.explanation || row.reason}</p>
               {row.suggested_action ? (
                 <p>
-                  <span className="font-medium text-slate-800">What to do next: </span>
+                  <span className="font-medium">What to do next: </span>
                   {row.suggested_action}
                 </p>
               ) : null}
               {row.evidence && row.evidence.length > 0 ? (
                 <div>
-                  <p className="font-medium text-slate-800">Evidence</p>
+                  <p className="font-medium">What we looked at</p>
                   <ul className="mt-1 list-disc space-y-0.5 pl-5">
                     {row.evidence.map((item) => (
                       <li key={item}>{item}</li>
@@ -232,7 +232,7 @@ function ExceptionRow({
                 </div>
               ) : null}
               {row.validator_passed ? (
-                <p className="text-xs font-medium text-emerald-800">Checked by validator</p>
+                <p className="text-xs font-medium text-ok">Checked against the source rows</p>
               ) : null}
               <RecordTable records={row.records ?? []} />
               <ExceptionNote row={row} batchKey={batchKey} />

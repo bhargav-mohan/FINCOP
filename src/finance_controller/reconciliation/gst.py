@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 GST_RATE = Decimal("0.18")
+GST_TOLERANCE = Decimal("0.05")
 
 
 def gst_half_up(gross: Decimal) -> Decimal:

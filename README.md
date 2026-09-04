@@ -21,7 +21,7 @@ cd dashboard && npm install && npm run dev
 
 That serves a production build on port 3000 (no hot-reload websocket). For live UI edits use `npm run watch` instead.
 
-Upload `fixtures/razorpay_sample/batch.zip` on the page, or click **Run again** for a generated sample.
+Upload `fixtures/razorpay_sample/batch.zip` on the page. The dashboard does not generate sample data — it only reviews what you upload.
 
 ## Razorpay integration
 
@@ -61,15 +61,24 @@ python -m finance_controller.cli --data-dir fixtures/finance_synthetic_data --no
 
 Exception detection is exact — precision, recall and F1 all 1.0, with zero false positives and zero false negatives — on the Razorpay recon fixture, the external CSV dump, and eight seeded configurations from 50 to 200 records. `tests/test_accuracy.py` asserts this on every configuration, so a regression fails the suite rather than quietly lowering the number.
 
+Each run also prints four evaluation bars:
+
+- **Matches correct** (`match_precision`) — of the loops the engine closed, the share whose ground-truth label is MATCHED. Target **≥90%**. Closing an injected exception drops this; leaving it on the queue does not.
+- **Exceptions reduced** — engine leftovers minus items still open after the investigator.
+- **Processing speed** — wall time for match + investigate (`elapsed_ms`).
+- **Explanation precision** — share of flagged items whose explanation cites that row (refs/amounts/reason) and matches the labeled type when ground truth has one. Target **≥90%**.
+
+Match *rate* (closed / closed+leftover) is a different number and can sit below 90% when the batch is mostly real breaks. Unresolved items are reported, never auto-passed.
+
 Two stages produce that figure. The deterministic engine must never miss an exception (recall 1.0 before the agent runs). The agent then recovers the cases the deterministic tiers cannot see — a settled payout whose UTR is absent from the export, identifiable only from the bank narration — and every close it proposes has to pass `validate_proposed_match` first. Match rate is lower than detection accuracy by design: an unresolved item is reported, never auto-passed.
 
 ## API key (keep this off GitHub)
 
-Copy `.env.example` to `.env` and set `GEMINI_API_KEY` there (Google AI Studio key) if you want the LLM investigator. Razorpay keys are not needed. `.env` is gitignored. Without a Gemini key the agent still runs using the rule investigator.
+Copy `.env.example` to `.env`. For GLM 5.2 set `LLM_PROVIDER=glm` and `OPENROUTER_API_KEY` (OpenRouter `sk-or-v1-…` key) with `GLM_MODEL=z-ai/glm-5.2`. Direct Z.ai uses `ZAI_API_KEY` and `GLM_MODEL=glm-5.2`. Gemini still works with `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`. `.env` is gitignored. Without a key the agent still runs using the rule investigator.
 
-If a Gemini key has ever been pasted into chat or a ticket, rotate it in Google AI Studio before you push.
+If an API key has ever been pasted into chat or a ticket, rotate it before you push.
 
-Every LLM call is bounded twice: a 20s per-request timeout with one retry, and a 90s wall-clock budget for the whole run. When either is hit, the run degrades to the rule investigator, prints a warning in the report, and still investigates every exception. A stalled or misconfigured provider slows the run by seconds, and cannot hang it or drop an item.
+LLM calls have no wall-clock cap. One retry is allowed for a transient blip; a second failure hands over to the rule investigator, which still investigates every exception. A stalled provider can hang the run until it returns.
 
 ## Local history (SQLite)
 
@@ -91,7 +100,7 @@ python -m finance_controller.cli --razorpay-zip fixtures/razorpay_sample/batch.z
 
 The matching engine, GST/date/amount checks, and the close itself are **never** an LLM. A model cannot book cash.
 
-AI (Gemini) is leftover-only and gated. CLI `--use-llm` and dashboard `?useLlm=1` opt in; the default generated run is rules-only so the headline match rate matches the CLI. Gemini may propose a close; `validate_proposed_match` must accept it or the item stays on the exception list. Narration-only bank lines that still form a unique cash loop are closed by the **rule investigator**, not by a model. `./scripts/demo.sh` runs `--no-llm`.
+AI runs on leftovers after rules. Matching, GST/date/amount checks, and the close itself are never an LLM — a model cannot book cash. GLM 5.2 (or Gemini) may propose a close; `validate_proposed_match` must accept it or the item stays on the exception list. Pass CLI `--no-llm` or dashboard `?useLlm=0` for rules only. Narration-only bank lines that still form a unique cash loop are closed by the **rule investigator**, not by a model.
 
 ## Tests
 

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import path from "node:path";
 
 import type { DashboardRun } from "./types";
@@ -23,51 +23,102 @@ function pythonBin(root: string): string {
 
 export { pythonBin };
 
-export function runFinanceController(opts: {
-  seed: number;
-  numRecords: number;
+type Spawned = {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  error?: Error;
+};
+
+function spawnPython(args: string[], timeoutMs?: number): Promise<Spawned> {
+  const root = repoRoot();
+  return new Promise((resolve) => {
+    const child = spawn(pythonBin(root), args, {
+      cwd: root,
+      env: { ...process.env, PYTHONPATH: path.join(root, "src") },
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (result: Spawned) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+      resolve(result);
+    };
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    if (timeoutMs != null) {
+      timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        finish({
+          status: null,
+          stdout,
+          stderr,
+          error: new Error(`controller timed out after ${timeoutMs}ms`),
+        });
+      }, timeoutMs);
+    }
+    child.on("error", (error) => finish({ status: null, stdout, stderr, error }));
+    child.on("close", (status) => finish({ status, stdout, stderr }));
+  });
+}
+
+function parsePayload(stdout: string, stderr: string, status: number | null): DashboardRun {
+  const start = stdout.indexOf("{");
+  const end = stdout.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    throw new Error(stderr || `controller exited ${status}`);
+  }
+  return JSON.parse(stdout.slice(start, end + 1)) as DashboardRun;
+}
+
+export async function runFinanceController(opts: {
   zipPath?: string;
+  dataDir?: string;
   useLlm?: boolean;
   matchTax?: boolean;
-}): DashboardRun {
-  const root = repoRoot();
-  const args = [
-    "-m",
-    "finance_controller.run_finance_controller",
-    "--seed",
-    String(opts.seed),
-    "--num-records",
-    String(opts.numRecords),
-  ];
+}): Promise<DashboardRun> {
+  const useLlm = opts.useLlm !== false;
+  if (!opts.zipPath && !opts.dataDir) {
+    throw new Error("Upload a file to run a review.");
+  }
+  const args = ["-m", "finance_controller.run_finance_controller"];
   if (opts.zipPath) {
     args.push("--zip", opts.zipPath);
   }
-  if (opts.useLlm) {
-    args.push("--use-llm");
+  if (opts.dataDir) {
+    args.push("--data-dir", opts.dataDir);
+  }
+  if (!useLlm) {
+    args.push("--no-llm");
   }
   if (opts.matchTax === false) {
     args.push("--no-tax");
   }
-  const result = spawnSync(pythonBin(root), args, {
-    cwd: root,
-    encoding: "utf8",
-    env: { ...process.env, PYTHONPATH: path.join(root, "src") },
-    timeout: opts.useLlm ? 180_000 : 60_000,
-  });
+  const result = await spawnPython(args, useLlm ? undefined : 60_000);
   if (result.error) {
     throw result.error;
   }
   let payload: DashboardRun;
   try {
-    const stdout = result.stdout || "";
-    const start = stdout.indexOf("{");
-    const end = stdout.lastIndexOf("}");
-    if (start < 0 || end <= start) {
-      throw new Error("no JSON");
+    payload = parsePayload(result.stdout || "", result.stderr || "", result.status);
+  } catch (err) {
+    if (err instanceof Error && !err.message.startsWith("controller exited")) {
+      throw new Error(result.stderr || `controller exited ${result.status}`);
     }
-    payload = JSON.parse(stdout.slice(start, end + 1)) as DashboardRun;
-  } catch {
-    throw new Error(result.stderr || `controller exited ${result.status}`);
+    throw err;
   }
   if (payload.error) {
     throw new Error(payload.error);

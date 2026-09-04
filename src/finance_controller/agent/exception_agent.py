@@ -80,7 +80,7 @@ _RULES: dict[ExceptionType, tuple[str, str, float]] = {
         0.87,
     ),
     ExceptionType.GST_MISMATCH: (
-        "GST is neither half-up nor bankers 18% of gross.",
+        "GST is not half-up 18% of gross (beyond 0.05 tolerance).",
         "Recalculate tax before releasing the match.",
         0.8,
     ),
@@ -97,8 +97,57 @@ _RULES: dict[ExceptionType, tuple[str, str, float]] = {
 }
 
 
+def citation_tokens(exception: ReconException) -> list[str]:
+    """Instance tokens an explanation must cite: refs, amounts, engine reason."""
+    tokens: list[str] = []
+    for ref in exception.references:
+        if ref and len(ref) >= 3:
+            tokens.append(ref)
+    for rec_id, amount in exception.amounts.items():
+        tokens.append(str(amount))
+        if rec_id and len(rec_id) >= 3:
+            tokens.append(rec_id)
+    reason = (exception.reason or "").strip()
+    if reason:
+        tokens.append(reason)
+    return tokens
+
+
+def cites_instance(text: str, exception: ReconException) -> bool:
+    hay = (text or "").lower()
+    if not hay:
+        return False
+    for token in citation_tokens(exception):
+        if token.lower() in hay:
+            return True
+    return False
+
+
+def instance_facts(exception: ReconException) -> str:
+    refs = ", ".join(exception.references) or "no reference"
+    amount_bits = ", ".join(f"{rid}={amount}" for rid, amount in list(exception.amounts.items())[:6])
+    reason = (exception.reason or "").rstrip(".")
+    parts = [reason] if reason else []
+    parts.append(f"refs {refs}")
+    if amount_bits:
+        parts.append(f"amounts {amount_bits}")
+    sources = ", ".join(s.value for s in exception.sources_involved)
+    if sources:
+        parts.append(f"sources {sources}")
+    return "; ".join(parts)
+
+
+def ensure_instance_explanation(hypothesis: ExceptionHypothesis, exception: ReconException) -> ExceptionHypothesis:
+    """Keep LLM wording when it already cites this row; otherwise prefix engine facts."""
+    if cites_instance(hypothesis.explanation, exception):
+        return hypothesis
+    facts = instance_facts(exception)
+    explanation = f"{facts}. {hypothesis.explanation}".strip()
+    return hypothesis.model_copy(update={"explanation": explanation})
+
+
 def rule_hypothesis(exception: ReconException) -> ExceptionHypothesis:
-    explanation, action, confidence = _RULES.get(
+    generic, action, confidence = _RULES.get(
         exception.exception_type,
         (
             "Exception remains on the queue after deterministic matching.",
@@ -106,13 +155,24 @@ def rule_hypothesis(exception: ReconException) -> ExceptionHypothesis:
             0.65,
         ),
     )
+    facts = instance_facts(exception)
     return ExceptionHypothesis(
         hypothesis_type=exception.exception_type,
-        explanation=explanation,
+        explanation=f"{facts}. {generic}",
         suggested_action=action,
         confidence=confidence,
         produced_by="rules",
     )
+
+
+def attach_explanations(exceptions: list[ReconException]) -> list[ReconException]:
+    """Every leftover gets an instance-specific hypothesis. LLM text is kept if it already cites the row."""
+    attached: list[ReconException] = []
+    for exc in exceptions:
+        hyp = exc.hypothesis or rule_hypothesis(exc)
+        hyp = ensure_instance_explanation(hyp, exc)
+        attached.append(exc.model_copy(update={"hypothesis": hyp}))
+    return attached
 
 
 def _prompt(exception: ReconException, nearby: list[Record]) -> str:

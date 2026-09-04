@@ -121,7 +121,7 @@ def test_orchestrate_fallback_without_api_key_completes_seeded_batch():
     assert {i.exception_id for i in escalated} == {e.exception_id for e in result.exceptions}
 
 
-def test_agent_resolves_ambiguous_memo_cases():
+def test_engine_closes_unique_memo_identity():
     from finance_controller.data.synthetic import generate
     from finance_controller.models import CaseCategory
 
@@ -129,11 +129,9 @@ def test_agent_resolves_ambiguous_memo_cases():
     batch = generate(config)
     result = reconcile(batch.all_records, config)
     keys = {g.key for g in batch.ground_truth if g.category == CaseCategory.RESOLVABLE_AMBIGUOUS}
-    engine_closed = result.closed_group_count
-    bench = orchestrate(result, config)
-    assert result.closed_group_count > engine_closed
     assert keys <= result.closed_keys
-    assert any(i.action == AgentAction.RECONCILE for i in bench.investigations)
+    bench = orchestrate(result, config)
+    assert keys <= result.closed_keys
     open_ids = {e.exception_id for e in result.exceptions}
     escalated = [i for i in bench.investigations if i.action == AgentAction.ESCALATE]
     assert {i.exception_id for i in escalated} == open_ids

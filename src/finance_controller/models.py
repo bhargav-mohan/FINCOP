@@ -143,6 +143,21 @@ class GroundTruth(BaseModel):
     record_ids: list[str] = Field(default_factory=list)
 
 
+class KpiScorecard(BaseModel):
+    """Four evaluation bars: match precision, exception reduction, speed, explanation precision."""
+
+    match_precision: float | None = None
+    match_precision_threshold: float = 0.90
+    match_precision_pass: bool | None = None
+    exceptions_before: int = 0
+    exceptions_after: int = 0
+    exceptions_reduced: int = 0
+    elapsed_ms: int = 0
+    explanation_precision: float | None = None
+    explanation_precision_threshold: float = 0.90
+    explanation_precision_pass: bool | None = None
+
+
 class AccuracyMetrics(BaseModel):
     true_positives: int
     false_positives: int
@@ -206,6 +221,7 @@ class Report(BaseModel):
     exceptions: list[ReconException]
     investigations: list[Investigation] = Field(default_factory=list)
     accuracy: AccuracyMetrics
+    kpis: KpiScorecard | None = None
     cash: CashPosition | None = None
     value: ValueMetrics | None = None
     ground_truth: list[GroundTruth]

@@ -1,4 +1,4 @@
-import { formatPct } from "@/lib/format";
+import { formatMs, formatPct, gateLabel } from "@/lib/format";
 import type { DashboardRun } from "@/lib/types";
 
 import { Metric } from "./ui/Metric";
@@ -7,14 +7,45 @@ import { Section } from "./ui/Section";
 
 export function AccuracyPanel({ data }: { data: DashboardRun }) {
   const acc = data.accuracy;
+  const kpis = data.kpis;
   return (
     <Section
-      title="Quality and value"
-      subtitle="How automatic matching compared with the full review, and time saved on auto-closed items."
+      title="Quality and time saved"
+      subtitle="How correct the matches were, how many leftovers closed, and how long the review took."
     >
+      {kpis ? (
+        <Panel className="px-4 py-3">
+          <p className="mb-3 text-xs font-medium text-muted">Quality checks</p>
+          <div className="flex flex-wrap gap-x-8 gap-y-4">
+            <Metric
+              label="Matches correct"
+              title="Closed items whose ground-truth label is MATCHED"
+              value={kpis.match_precision == null ? "n/a" : formatPct(kpis.match_precision)}
+              hint={`${gateLabel(kpis.match_precision_pass)} · ≥${formatPct(kpis.match_precision_threshold)}`}
+            />
+            <Metric
+              label="Exceptions reduced"
+              title="Engine leftovers closed by the investigator"
+              value={String(kpis.exceptions_reduced)}
+              hint={`${kpis.exceptions_before} → ${kpis.exceptions_after}`}
+            />
+            <Metric
+              label="Processing speed"
+              title="Wall time for matching plus investigation"
+              value={formatMs(kpis.elapsed_ms)}
+            />
+            <Metric
+              label="Explanation precision"
+              title="Flagged items whose explanation cites this row and matches the labeled type"
+              value={kpis.explanation_precision == null ? "n/a" : formatPct(kpis.explanation_precision)}
+              hint={`${gateLabel(kpis.explanation_precision_pass)} · ≥${formatPct(kpis.explanation_precision_threshold)}`}
+            />
+          </div>
+        </Panel>
+      ) : null}
       <div className="grid gap-3 lg:grid-cols-2">
         <Panel className="px-4 py-3">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-slate-400">Accuracy</p>
+          <p className="mb-3 text-xs font-medium text-muted">Accuracy</p>
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             <Metric
               label="Rules alone"
@@ -50,17 +81,30 @@ export function AccuracyPanel({ data }: { data: DashboardRun }) {
           </div>
         </Panel>
         <Panel className="px-4 py-3">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-slate-400">Efficiency</p>
+          <p className="mb-3 text-xs font-medium text-muted">Who closed what</p>
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             {data.value ? (
               <>
                 <Metric
                   label="Closed by rules"
-                  value={String(data.value.auto_closed_by_rules ?? data.value.auto_closed_by_ai)}
+                  title="Leftovers closed by the rule investigator"
+                  value={String(data.value.auto_closed_by_rules ?? 0)}
                 />
-                <Metric label="Closed by AI" value={String(data.value.auto_closed_by_llm ?? 0)} />
-                <Metric label="Sent to analyst" value={String(data.value.sent_to_analyst)} />
-                <Metric label="Est. minutes saved" value={String(data.value.est_analyst_minutes_saved)} />
+                <Metric
+                  label="Closed by AI"
+                  title="Leftovers closed by the LLM"
+                  value={String(data.value.auto_closed_by_llm ?? 0)}
+                />
+                <Metric
+                  label="Sent to analyst"
+                  title="Investigator escalations"
+                  value={String(data.value.sent_to_analyst)}
+                />
+                <Metric
+                  label="Est. minutes saved"
+                  title="Rules-closed loops × assumed minutes"
+                  value={`${data.value.est_analyst_minutes_saved} min`}
+                />
               </>
             ) : (
               <Metric label="Auto-close estimate" value="n/a" />
@@ -69,9 +113,9 @@ export function AccuracyPanel({ data }: { data: DashboardRun }) {
         </Panel>
       </div>
       {data.value?.assumption ? (
-        <p className="text-xs text-slate-500">{data.value.assumption}</p>
+        <p className="text-xs text-muted">{data.value.assumption}</p>
       ) : (
-        <p className="text-xs text-slate-500">No auto-close estimate for this run.</p>
+        <p className="text-xs text-muted">No time-saved estimate for this run.</p>
       )}
     </Section>
   );

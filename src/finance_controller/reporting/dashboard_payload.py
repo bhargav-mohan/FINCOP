@@ -27,6 +27,39 @@ def _empty_store(batch_key: str = "", reason: str = "") -> dict[str, Any]:
     }
 
 
+def _empty_kpis() -> dict[str, Any]:
+    return {
+        "match_precision": None,
+        "match_precision_threshold": 0.90,
+        "match_precision_pass": None,
+        "exceptions_before": 0,
+        "exceptions_after": 0,
+        "exceptions_reduced": 0,
+        "elapsed_ms": 0,
+        "explanation_precision": None,
+        "explanation_precision_threshold": 0.90,
+        "explanation_precision_pass": None,
+    }
+
+
+def _kpis_payload(report: Report) -> dict[str, Any]:
+    kpis = report.kpis
+    if kpis is None:
+        return _empty_kpis()
+    return {
+        "match_precision": kpis.match_precision,
+        "match_precision_threshold": kpis.match_precision_threshold,
+        "match_precision_pass": kpis.match_precision_pass,
+        "exceptions_before": kpis.exceptions_before,
+        "exceptions_after": kpis.exceptions_after,
+        "exceptions_reduced": kpis.exceptions_reduced,
+        "elapsed_ms": kpis.elapsed_ms,
+        "explanation_precision": kpis.explanation_precision,
+        "explanation_precision_threshold": kpis.explanation_precision_threshold,
+        "explanation_precision_pass": kpis.explanation_precision_pass,
+    }
+
+
 def error_payload(*, seed: int, num_records: int, error: str) -> dict[str, Any]:
     return {
         "error": error,
@@ -56,6 +89,7 @@ def error_payload(*, seed: int, num_records: int, error: str) -> dict[str, Any]:
             "false_negatives": 0,
             "type_accuracy": None,
         },
+        "kpis": _empty_kpis(),
         "value": None,
         "exceptions": [],
         "matches": [],
@@ -185,6 +219,7 @@ def build_dashboard_payload(
             "type_accuracy": report.accuracy.type_accuracy,
             "f1": report.accuracy.f1,
         },
+        "kpis": _kpis_payload(report),
         "value": (
             {
                 "auto_closed_by_ai": report.value.auto_closed_by_ai,

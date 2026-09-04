@@ -1,0 +1,398 @@
+[
+  {
+    "payment_id": "LOW0001",
+    "settlement_id": "LST0001",
+    "utr": "UTR0805920425",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0002",
+    "settlement_id": "LST0002",
+    "utr": "UTR6505025145",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0003",
+    "settlement_id": "LST0003",
+    "utr": "UTR1510756457",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0004",
+    "settlement_id": "LST0004",
+    "utr": "UTR2762558729",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0005",
+    "settlement_id": "LST0005",
+    "utr": "UTR1406758365",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0006",
+    "settlement_id": "LST0006",
+    "utr": "UTR9460769823",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0007",
+    "settlement_id": "LST0007",
+    "utr": "UTR1107123804",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0008",
+    "settlement_id": "LST0008",
+    "utr": "UTR8243891122",
+    "label": "clean_match"
+  },
+  {
+    "payment_id": "LOW0009",
+    "settlement_id": "LST0009",
+    "utr": "UTR2156318967",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0010",
+    "settlement_id": "LST0010",
+    "utr": "UTR7331600213",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0011",
+    "settlement_id": "LST0011",
+    "utr": "UTR5960236964",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0012",
+    "settlement_id": "LST0012",
+    "utr": "UTR4013281095",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0013",
+    "settlement_id": "LST0013",
+    "utr": "UTR2608593255",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0014",
+    "settlement_id": "LST0014",
+    "utr": "UTR8872530022",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0015",
+    "settlement_id": "LST0015",
+    "utr": "UTR9932212698",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0016",
+    "settlement_id": "LST0016",
+    "utr": "UTR0697741738",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0017",
+    "settlement_id": "LST0017",
+    "utr": "UTR7111981896",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0018",
+    "settlement_id": "LST0018",
+    "utr": "UTR0771719180",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0019",
+    "settlement_id": "LST0019",
+    "utr": "UTR3580786858",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0020",
+    "settlement_id": "LST0020",
+    "utr": "UTR5876711610",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0021",
+    "settlement_id": "LST0021",
+    "utr": "UTR8010040803",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0022",
+    "settlement_id": "LST0022",
+    "utr": "UTR2585258998",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0023",
+    "settlement_id": "LST0023",
+    "utr": "UTR1402067817",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0024",
+    "settlement_id": "LST0024",
+    "utr": "UTR2934981453",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0025",
+    "settlement_id": "LST0025",
+    "utr": "UTR3347352919",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0026",
+    "settlement_id": "LST0026",
+    "utr": "UTR2072149821",
+    "label": "missing_bank_credit"
+  },
+  {
+    "payment_id": "LOW0027",
+    "settlement_id": "LST0027",
+    "utr": "UTR0064096808",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0028",
+    "settlement_id": "LST0028",
+    "utr": "UTR0949607992",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0029",
+    "settlement_id": "LST0029",
+    "utr": "UTR3725130207",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0030",
+    "settlement_id": "LST0030",
+    "utr": "UTR2466658932",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0031",
+    "settlement_id": "LST0031",
+    "utr": "UTR6430107210",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0032",
+    "settlement_id": "LST0032",
+    "utr": "UTR5601203393",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0033",
+    "settlement_id": "LST0033",
+    "utr": "UTR3034525020",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0034",
+    "settlement_id": "LST0034",
+    "utr": "UTR2609818757",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0035",
+    "settlement_id": "LST0035",
+    "utr": "UTR6088678155",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0036",
+    "settlement_id": "LST0036",
+    "utr": "UTR6620131856",
+    "label": "undocumented_adjustment"
+  },
+  {
+    "payment_id": "LOW0037",
+    "settlement_id": "LST0037",
+    "utr": "UTR2409805748",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0038",
+    "settlement_id": "LST0038",
+    "utr": "UTR2648092061",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0039",
+    "settlement_id": "LST0039",
+    "utr": "UTR7350026662",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0040",
+    "settlement_id": "LST0040",
+    "utr": "UTR7953042059",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0041",
+    "settlement_id": "LST0041",
+    "utr": "UTR5159185872",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0042",
+    "settlement_id": "LST0042",
+    "utr": "UTR9647431333",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0043",
+    "settlement_id": "LST0043",
+    "utr": "UTR0720380978",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0044",
+    "settlement_id": "LST0044",
+    "utr": "UTR6194377407",
+    "label": "currency_mismatch"
+  },
+  {
+    "payment_id": "LOW0045",
+    "settlement_id": "LST0045",
+    "utr": "UTR2094618495",
+    "label": "refund"
+  },
+  {
+    "payment_id": "LOW0046",
+    "settlement_id": "LST0046",
+    "utr": "UTR2792635311",
+    "label": "refund"
+  },
+  {
+    "payment_id": "LOW0047",
+    "settlement_id": "LST0047",
+    "utr": "UTR5437452153",
+    "label": "refund"
+  },
+  {
+    "payment_id": "LOW0048",
+    "settlement_id": "LST0048",
+    "utr": "UTR8744533029",
+    "label": "refund"
+  },
+  {
+    "payment_id": "LOW0049",
+    "settlement_id": "LST0049",
+    "utr": "UTR7808364389",
+    "label": "refund"
+  },
+  {
+    "payment_id": "LOW0050",
+    "settlement_id": "LST0050",
+    "utr": "UTR9409954472",
+    "label": "refund"
+  },
+  {
+    "payment_id": "LOW0051",
+    "settlement_id": "LST0051",
+    "utr": "",
+    "label": "empty_utr"
+  },
+  {
+    "payment_id": "LOW0052",
+    "settlement_id": "LST0052",
+    "utr": "",
+    "label": "empty_utr"
+  },
+  {
+    "payment_id": "LOW0053",
+    "settlement_id": "LST0053",
+    "utr": "",
+    "label": "empty_utr"
+  },
+  {
+    "payment_id": "LOW0054",
+    "settlement_id": "LST0054",
+    "utr": "",
+    "label": "empty_utr"
+  },
+  {
+    "payment_id": "LOW0055",
+    "settlement_id": "LST0055",
+    "utr": "UTR2804271428",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": "LOW0056",
+    "settlement_id": "LST0056",
+    "utr": "UTR2804271428",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": "LOW0057",
+    "settlement_id": "LST0057",
+    "utr": "UTR9059005471",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": "LOW0058",
+    "settlement_id": "LST0058",
+    "utr": "UTR9059005471",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": "LOW0059",
+    "settlement_id": "LST0059",
+    "utr": "UTR1654378941",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": "LOW0060",
+    "settlement_id": "LST0060",
+    "utr": "UTR1654378941",
+    "label": "duplicate_utr_conflict"
+  },
+  {
+    "payment_id": null,
+    "settlement_id": null,
+    "utr": "UTR3738071543",
+    "label": "orphan_bank_credit"
+  },
+  {
+    "payment_id": null,
+    "settlement_id": null,
+    "utr": "UTR4870009278",
+    "label": "orphan_bank_credit"
+  },
+  {
+    "payment_id": null,
+    "settlement_id": null,
+    "utr": "UTR3907692758",
+    "label": "orphan_bank_credit"
+  },
+  {
+    "payment_id": null,
+    "settlement_id": null,
+    "utr": "UTR2499324491",
+    "label": "orphan_bank_credit"
+  },
+  {
+    "payment_id": null,
+    "settlement_id": null,
+    "utr": "UTR7633370172",
+    "label": "orphan_bank_credit"
+  },
+  {
+    "payment_id": null,
+    "settlement_id": null,
+    "utr": "UTR4514106249",
+    "label": "orphan_bank_credit"
+  }
+]

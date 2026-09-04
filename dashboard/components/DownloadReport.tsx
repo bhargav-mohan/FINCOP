@@ -3,6 +3,8 @@
 import type { DashboardException, DashboardRun } from "@/lib/types";
 import { confidenceLabel, csvEscape, formatInr, formatPct, humanizeType, sourceLabel } from "@/lib/format";
 
+import { Button } from "./ui/Button";
+
 function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -45,12 +47,19 @@ function summaryText(data: DashboardRun): string {
     "Settlement review summary",
     `Source: ${sourceLabel(data.batch_source)}`,
     data.batch_source === "generated"
-      ? `Seed: ${data.seed} (same seed reproduces this batch)`
+      ? `Source: generated (CLI only)`
       : "Same file reproduces this review",
     `Reconciled: ${formatPct(data.match_rate)} (${data.matched} of ${data.total_groups || data.matched + data.exception_count})`,
     `Closed: ${data.matched}`,
     `Needs review: ${data.exception_count}`,
     `Match precision (closed vs MATCHED labels): ${data.match_precision == null ? "n/a" : formatPct(data.match_precision)}`,
+    data.kpis
+      ? `Exceptions reduced: ${data.kpis.exceptions_reduced} (${data.kpis.exceptions_before} → ${data.kpis.exceptions_after})`
+      : "",
+    data.kpis ? `Processing speed: ${data.kpis.elapsed_ms} ms` : "",
+    data.kpis
+      ? `Explanation precision: ${data.kpis.explanation_precision == null ? "n/a" : formatPct(data.kpis.explanation_precision)}`
+      : "",
     `Detection precision: ${formatPct(data.exception_precision)}`,
     `Detection recall: ${formatPct(data.exception_recall)}`,
     `Settled in bank: ${formatInr(data.cash.closed_bank_net)}`,
@@ -69,15 +78,14 @@ function summaryText(data: DashboardRun): string {
       `Estimate (not measured): ${data.value.est_analyst_minutes_saved} minutes — ${data.value.assumption}`
     );
   }
-  return `${lines.join("\n")}\n`;
+  return `${lines.filter(Boolean).join("\n")}\n`;
 }
 
 export function DownloadReport({ data }: { data: DashboardRun }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800"
+      <Button
+        variant="secondary"
         onClick={() => {
           const csv = exceptionsCsv(data.exceptions);
           downloadBlob(
@@ -86,11 +94,10 @@ export function DownloadReport({ data }: { data: DashboardRun }) {
           );
         }}
       >
-        Download CSV
-      </button>
-      <button
-        type="button"
-        className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800"
+        Download leftovers
+      </Button>
+      <Button
+        variant="secondary"
         onClick={() => {
           downloadBlob(
             "review-summary.txt",
@@ -99,10 +106,9 @@ export function DownloadReport({ data }: { data: DashboardRun }) {
         }}
       >
         Download summary
-      </button>
-      <button
-        type="button"
-        className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800"
+      </Button>
+      <Button
+        variant="secondary"
         onClick={() => {
           downloadBlob(
             "reconciliation-report.json",
@@ -111,7 +117,7 @@ export function DownloadReport({ data }: { data: DashboardRun }) {
         }}
       >
         Download JSON
-      </button>
+      </Button>
     </div>
   );
 }

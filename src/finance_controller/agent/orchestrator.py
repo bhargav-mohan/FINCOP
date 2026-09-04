@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from finance_controller.agent.exception_agent import annotate_exceptions
+from finance_controller.agent.exception_agent import attach_explanations
 from finance_controller.agent.llm import LlmBudget, LlmUnavailable, run_tool_loop
 from finance_controller.agent.tools import ReconWorkbench
 from finance_controller.config import ReconConfig
@@ -236,6 +236,7 @@ def investigate_with_llm(
         dispatch=dispatch,
         model=config.model,
         provider=config.provider,
+        max_rounds=4,
         budget=budget,
     )
 
@@ -281,9 +282,10 @@ def orchestrate(result: EngineResult, config: ReconConfig) -> ReconWorkbench:
             continue
         _progress(f"[agent] investigating {exception_id} ({i}/{total}) with rules")
         investigate_with_rules(bench, exception_id)
+        current = bench._exc_map().get(exception_id)
         still_open = (
-            exception_id in bench._exc_map()
-            and not set(bench._exc_map()[exception_id].record_ids) <= result.closed_record_ids
+            current is not None
+            and not set(current.record_ids) <= result.closed_record_ids
         )
         if still_open and use_llm:
             _progress(f"[agent] leftovers {exception_id} ({i}/{total}) with llm")
@@ -301,22 +303,19 @@ def orchestrate(result: EngineResult, config: ReconConfig) -> ReconWorkbench:
         for e in result.exceptions
         if not set(e.record_ids) <= result.closed_record_ids
     ]
-    if use_llm and budget is not None and not budget.exhausted():
-        result.exceptions = annotate_exceptions(
-            remaining,
-            result.records,
-            model=config.model,
-            provider=config.provider,
-            budget=budget,
-        )
-    else:
-        if config.use_llm and not use_llm:
-            if not any("quota" in w.lower() for w in bench.warnings):
+    # Rule hypotheses already cite refs/amounts. A second GLM pass per leftover
+    # was slow and surfaced as "AI assistant was unavailable".
+    if config.use_llm and not use_llm:
+        if not any("quota" in w.lower() for w in bench.warnings):
+            if not any("time cap" in w.lower() or "timed out" in w.lower() or "budget" in w.lower() for w in bench.warnings):
                 bench.warnings.append("Exception hypotheses came from rules, not the LLM.")
-        result.exceptions = remaining
+    result.exceptions = remaining
     drop_stale_escalations(bench)
     for exc in result.exceptions:
         if exc.exception_id not in _investigated_ids(bench):
             investigate_with_rules(bench, exc.exception_id)
     drop_stale_escalations(bench)
+    result.exceptions = attach_explanations(
+        [e for e in result.exceptions if not set(e.record_ids) <= result.closed_record_ids]
+    )
     return bench

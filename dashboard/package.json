@@ -5,7 +5,8 @@
     "dev": "node scripts/serve.cjs",
     "watch": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --experimental-strip-types --test lib/format.test.ts"
   },
   "dependencies": {
     "next": "^15.5.0",

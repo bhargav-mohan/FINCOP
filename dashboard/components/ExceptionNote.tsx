@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import type { DashboardException } from "@/lib/types";
 
+import { Button } from "./ui/Button";
+
 export function ExceptionNote({
   row,
   batchKey,
@@ -38,13 +40,13 @@ export function ExceptionNote({
         }),
       });
       if (!res.ok) {
-        setStatus("Could not save.");
+        setStatus("Could not save. Try again.");
         return;
       }
-      setStatus(action === "resolve" ? "Marked resolved." : "Saved.");
+      setStatus(action === "resolve" ? "Marked done." : "Saved.");
       router.refresh();
     } catch {
-      setStatus("Could not save.");
+      setStatus("Could not save. Try again.");
     } finally {
       setPending(false);
     }
@@ -52,46 +54,41 @@ export function ExceptionNote({
 
   return (
     <form
-      className="space-y-2 rounded border border-slate-200 bg-white p-3"
+      className="space-y-2 rounded-uber border border-line bg-white p-3"
       onSubmit={(e) => {
         e.preventDefault();
         void post("note");
       }}
     >
-      <p className="text-xs font-medium text-slate-700">Analyst note</p>
+      <p className="text-sm font-medium text-ink">Your note</p>
       {row.resolved_at ? (
-        <p className="text-xs text-emerald-800">Resolved {row.resolved_at.slice(0, 10)}</p>
+        <p className="text-xs text-ok">Resolved {row.resolved_at.slice(0, 10)}</p>
       ) : null}
       <input
-        className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-        placeholder="Assignee"
+        className="w-full rounded-uber border border-line px-3 py-2 text-sm"
+        placeholder="Who is looking at this?"
         value={assignee}
         onChange={(e) => setAssignee(e.target.value)}
       />
       <textarea
-        className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+        className="w-full rounded-uber border border-line px-3 py-2 text-sm"
         rows={2}
         placeholder="What did you check?"
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded bg-slate-900 px-3 py-1 text-xs font-medium text-white disabled:opacity-60"
-        >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" disabled={pending}>
           Save note
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          className="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-800 disabled:opacity-60"
-          onClick={() => void post("resolve")}
-        >
-          Mark resolved
-        </button>
-        {status ? <span className="text-xs text-slate-500">{status}</span> : null}
+        </Button>
+        <Button variant="secondary" disabled={pending} onClick={() => void post("resolve")}>
+          Mark done
+        </Button>
+        {status ? (
+          <span className="text-xs text-muted" role="status">
+            {status}
+          </span>
+        ) : null}
       </div>
     </form>
   );

@@ -16,7 +16,9 @@ from finance_controller.models import (
     ToolCallLog,
 )
 from finance_controller.reconciliation.engine import EngineResult, _group_key
-from finance_controller.reconciliation.matchers import expected_net, payee_key
+from finance_controller.reconciliation.identity import compact_reference, names_compatible, payee_key
+from finance_controller.reconciliation.matchers import expected_net
+from finance_controller.reconciliation.narration import memo_compacts
 from finance_controller.reconciliation.validate import validate_proposed_match
 
 
@@ -119,15 +121,20 @@ class ReconWorkbench:
             if rec.source not in need and need:
                 continue
             score = 0
+            desc_compacts = memo_compacts(rec.description) if rec.description else set()
+            rec_key = compact_reference(rec.reference)
             for mem in members:
                 if rec.currency == mem.currency:
                     score += 2
-                if payee_key(rec) and payee_key(rec) == payee_key(mem):
-                    score += 5
-                desc = (rec.description or "").upper()
-                if mem.reference and mem.reference in desc:
+                mem_key = compact_reference(mem.reference)
+                if mem_key and (mem_key == rec_key or mem_key in desc_compacts):
                     score += 6
-                if payee_key(mem) and payee_key(mem) in desc:
+                elif mem.reference and mem.reference.upper() in (rec.description or "").upper():
+                    score += 6
+                payee = payee_key(mem)
+                if payee and names_compatible(mem.payee, rec.payee):
+                    score += 5
+                elif payee and payee in (rec.description or "").upper():
                     score += 3
                 if abs((rec.txn_date - mem.txn_date).days) <= self.config.date_lag_days:
                     score += 2

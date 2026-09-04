@@ -8,6 +8,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from finance_controller.agent.llm import OPENROUTER_GLM_MODEL, ZAI_GLM_MODEL
+
 load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
 
 
@@ -16,8 +18,28 @@ DEFAULT_NUM_RECORDS = 80
 DEFAULT_INJECT_EXCEPTIONS = 12
 DEFAULT_INJECT_RESOLVABLE = 6
 DEFAULT_INJECT_EDGES = 16
-DEFAULT_MODEL = os.getenv("GEMINI_MODEL") or os.getenv("OPENAI_MODEL") or "gemini-3.6-flash"
-DEFAULT_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
+
+
+def resolve_default_provider() -> str:
+    return (os.getenv("LLM_PROVIDER") or "gemini").strip().lower() or "gemini"
+
+
+def resolve_default_model() -> str:
+    provider = resolve_default_provider()
+    glm = (os.getenv("GLM_MODEL") or os.getenv("OPENROUTER_MODEL") or "").strip()
+    if provider == "openrouter":
+        return glm or OPENROUTER_GLM_MODEL
+    if provider in {"glm", "zai", "zhipu"}:
+        if os.getenv("OPENROUTER_API_KEY", "").strip():
+            return glm or OPENROUTER_GLM_MODEL
+        return glm or ZAI_GLM_MODEL
+    if provider == "openai":
+        return (os.getenv("OPENAI_MODEL") or "").strip() or "gpt-4o-mini"
+    return (os.getenv("GEMINI_MODEL") or os.getenv("OPENAI_MODEL") or "").strip() or "gemini-3.6-flash"
+
+
+DEFAULT_MODEL = resolve_default_model()
+DEFAULT_PROVIDER = resolve_default_provider()
 
 AMOUNT_TOLERANCE = Decimal("0.05")
 FEE_RATE = Decimal("0.02")
@@ -46,4 +68,4 @@ class ReconConfig:
     holidays: frozenset[date] = HOLIDAYS
     model: str = DEFAULT_MODEL
     provider: str = DEFAULT_PROVIDER
-    use_llm: bool = False
+    use_llm: bool = True

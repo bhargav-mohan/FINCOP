@@ -49,6 +49,10 @@ def test_render_text_states_overflag_policy_and_false_positive_count():
     assert "false close corrupts the ledger" in text
     assert f"false_positives={report.accuracy.false_positives}" in text
     assert "injected=" in text
+    assert "match_precision=" in text
+    assert "explanation_precision=" in text
+    assert "elapsed_ms=" in text
+    assert "reduced=" in text
 
 
 def test_render_text_omits_injection_knobs_for_ingested_runs():

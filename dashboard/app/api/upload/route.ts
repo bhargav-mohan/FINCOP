@@ -49,8 +49,16 @@ function extOf(name: string): string {
 }
 
 export async function POST(request: Request) {
+  let form: FormData;
   try {
-    const form = await request.formData();
+    form = await request.formData();
+  } catch {
+    return Response.json(
+      { error: "Choose CSVs, a folder, an Excel workbook, or a ZIP." },
+      { status: 400 }
+    );
+  }
+  try {
     const files = collectFiles(form);
     if (!files.length) {
       return Response.json(

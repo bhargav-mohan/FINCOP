@@ -27,17 +27,17 @@ export function ExceptionFilters({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm text-slate-600">
+        <label className="text-sm text-muted">
           <span className="sr-only">Search unresolved items</span>
           <input
             type="search"
             value={query}
             onChange={(e) => onQuery(e.target.value)}
             placeholder="Search item, details, or records"
-            className="w-64 rounded border border-slate-300 bg-white px-3 py-1.5 text-sm"
+            className="w-64 rounded-uber border border-line bg-white px-3 py-2 text-sm"
           />
         </label>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted">
           Showing {shown} of {rows.length}
         </p>
       </div>
@@ -47,7 +47,7 @@ export function ExceptionFilters({
             type="button"
             onClick={() => onTypeFilter(null)}
             className={`rounded-full px-2.5 py-1 text-xs ${
-              typeFilter === null ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+              typeFilter === null ? "bg-black text-white" : "bg-white text-ink ring-1 ring-line"
             }`}
           >
             All ({rows.length})
@@ -58,7 +58,7 @@ export function ExceptionFilters({
               type="button"
               onClick={() => onTypeFilter(typeFilter === type ? null : type)}
               className={`rounded-full px-2.5 py-1 text-xs ${
-                typeFilter === type ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+                typeFilter === type ? "bg-black text-white" : "bg-white text-ink ring-1 ring-line"
               }`}
             >
               {humanizeType(type)} ({count})

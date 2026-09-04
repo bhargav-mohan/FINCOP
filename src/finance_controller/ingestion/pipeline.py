@@ -99,7 +99,12 @@ def ingest_zip(zip_path: str | Path, *, work_dir: str | Path | None = None) -> I
                 assigned[role] = path
             continue
         if path.suffix.lower() != ".csv":
-            if path.name.lower().startswith("readme"):
+            if path.name.lower().startswith("readme") or path.suffix.lower() in {
+                ".py",
+                ".md",
+                ".txt",
+                ".pyc",
+            }:
                 continue
             warnings.append(f"skipped non-csv file: {path.name}")
             continue

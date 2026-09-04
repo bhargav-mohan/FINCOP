@@ -13,6 +13,7 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+.cursor/
 
 # Next.js / dashboard
 dashboard/node_modules/

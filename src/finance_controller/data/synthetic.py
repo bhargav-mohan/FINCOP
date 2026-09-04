@@ -258,7 +258,7 @@ def _emit_edge(out: SyntheticBatch, txn: dict, edge: str, add_ledger, add_psp, a
         psp = add_psp(txn, None, gst=gst)
         bank = add_bank(txn)
         out.ground_truth.append(
-            _gt(key=key, status=ExpectedStatus.MATCHED, record_ids=[ledger.id, psp.id, bank.id], defect="GST using bankers rounding is accepted")
+            _gt(key=key, status=ExpectedStatus.MATCHED, record_ids=[ledger.id, psp.id, bank.id], defect="GST bankers rounding sits inside half-up ±0.05")
         )
         return
 

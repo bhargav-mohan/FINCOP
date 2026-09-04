@@ -53,6 +53,7 @@ const sourceMtime = Math.max(
   latestMtime(path.join(root, "components")),
   latestMtime(path.join(root, "lib")),
   mtime(path.join(root, "next.config.js")),
+  mtime(path.join(root, "tailwind.config.js")),
   mtime(path.join(root, "package.json"))
 );
 const stale = !existsSync(buildIdPath) || sourceMtime > mtime(buildIdPath);

@@ -1,78 +1,72 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { Suspense } from "react";
+import { connection } from "next/server";
+import { unstable_noStore as noStore } from "next/cache";
 
-import { EvidenceTabs } from "@/components/EvidenceTabs";
-import { ExceptionsTable } from "@/components/ExceptionsTable";
+import { ReviewPending } from "@/components/ReviewPending";
+import { ReviewRun } from "@/components/ReviewRun";
 import { TopBar } from "@/components/TopBar";
-import { Verdict } from "@/components/Verdict";
-import { Warnings } from "@/components/Warnings";
-import { friendlyError } from "@/lib/format";
-import { repoRoot, runFinanceController } from "@/lib/runFinanceController";
+import { repoRoot } from "@/lib/runFinanceController";
 
 type Search = {
-  seed?: string;
-  source?: string;
-  uploadId?: string;
-  useLlm?: string;
+  source?: string | string[];
+  uploadId?: string | string[];
+  useLlm?: string | string[];
+  n?: string | string[];
+  run?: string | string[];
 };
+
+function first(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<Search>;
 }) {
+  noStore();
+  await connection();
   const params = await searchParams;
-  const seed = Number(params.seed ?? 42);
-  const safeSeed = Number.isFinite(seed) ? seed : 42;
-  const uploadId = params.uploadId && isUuid(params.uploadId) ? params.uploadId : undefined;
-  const uploadDir =
-    params.source === "zip" && uploadId
-      ? path.join(repoRoot(), "dashboard", ".uploads", uploadId)
-      : undefined;
+  const source = first(params.source);
+  const rawId = first(params.uploadId);
+  const uploadId = rawId && isUuid(rawId) ? rawId : undefined;
+  const uploadRequested = source === "zip" && Boolean(uploadId);
+  const uploadDir = uploadRequested
+    ? path.join(repoRoot(), "dashboard", ".uploads", uploadId as string)
+    : undefined;
   const zipPath = uploadDir && existsSync(uploadDir) ? uploadDir : undefined;
 
-  let data;
-  try {
-    data = runFinanceController({
-      seed: safeSeed,
-      numRecords: 80,
-      zipPath,
-      useLlm: params.useLlm === "1" || params.useLlm === "true",
-    });
-  } catch (err) {
-    const raw = err instanceof Error ? err.message : "";
-    return <TopBar error={friendlyError(raw)} seed={safeSeed} batchSource="generated" />;
-  }
-
-  if (data.error) {
-    return <TopBar error={friendlyError(data.error)} seed={safeSeed} batchSource="generated" />;
-  }
-
-  return (
-    <>
+  if (!zipPath) {
+    return (
       <TopBar
-        batchSource={data.batch_source}
-        sourceFiles={data.source_files}
-        seed={data.seed}
-        data={data}
+        error={
+          uploadRequested
+            ? "That upload is no longer on this machine. Upload the files again."
+            : undefined
+        }
       />
-      <Warnings
-        warnings={[...(data.ingestion?.warnings ?? []), ...(data.agent_warnings ?? [])]}
-      />
-      <Verdict data={data} />
-      <ExceptionsTable
-        rows={data.exceptions}
-        title={`Needs a person (${data.exceptions.length})`}
-        batchKey={data.store?.batch_key}
-        totalExposure={data.total_exposure}
-      />
-      <EvidenceTabs data={data} />
-    </>
+    );
+  }
+
+  const useLlmRaw = first(params.useLlm);
+  const useLlm = useLlmRaw !== "0" && useLlmRaw !== "false";
+  const requestId = `${uploadId}:${first(params.n) || first(params.run) || "0"}`;
+  return (
+    <Suspense key={requestId} fallback={<ReviewPending />}>
+      <ReviewRun zipPath={zipPath} useLlm={useLlm} requestId={requestId} />
+    </Suspense>
   );
 }

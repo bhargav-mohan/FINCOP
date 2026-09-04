@@ -9,8 +9,7 @@ fi
 export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
 "$PYTHON" -m finance_controller.cli \
   --razorpay-zip fixtures/razorpay_sample/batch.zip \
-  --no-llm \
   --out report
 echo
-echo "Investigator used rules (no LLM). Same default as the dashboard. Pass --use-llm or ?useLlm=1 to opt in."
+echo "Rules close unambiguous loops. An LLM may investigate leftovers if a key is set. Pass --no-llm for rules only."
 echo "Dashboard: cd dashboard && npm install && npm run dev"

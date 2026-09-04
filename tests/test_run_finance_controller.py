@@ -18,7 +18,7 @@ EXCEPTION_KEYS = {
 
 
 def test_run_finance_controller_payload_shape():
-    payload = run_finance_controller(seed=42, num_records=60)
+    payload = run_finance_controller(seed=42, num_records=60, use_llm=False)
     assert payload["seed"] == 42
     assert payload["num_records"] == 60
     assert payload["exception_count"] == len(payload["exceptions"])
@@ -35,6 +35,16 @@ def test_run_finance_controller_payload_shape():
     assert "exception_precision" in payload
     assert payload["match_precision"] == 1.0
     assert payload["exception_precision"] == 1.0
+    kpis = payload["kpis"]
+    assert kpis["match_precision"] == 1.0
+    assert kpis["match_precision_pass"] is True
+    assert kpis["match_precision_threshold"] == 0.90
+    assert kpis["exceptions_before"] >= kpis["exceptions_after"]
+    assert kpis["exceptions_reduced"] == kpis["exceptions_before"] - kpis["exceptions_after"]
+    assert kpis["elapsed_ms"] >= 0
+    assert kpis["elapsed_ms"] < 30_000
+    assert kpis["explanation_precision"] >= 0.90
+    assert kpis["explanation_precision_pass"] is True
     assert "closed_bank_net" in payload["cash"]
     assert "in_flight_amount" in payload["cash"]
     assert "in_flight_count" in payload["cash"]
@@ -60,6 +70,11 @@ def test_run_finance_controller_payload_shape():
         assert "amount_at_risk" in row
         assert "records" in row
         assert "key" in row
+        assert row["explanation"]
+        if row["refs"]:
+            assert any(ref in row["explanation"] for ref in row["refs"]) or (
+                row["reason"] and row["reason"] in row["explanation"]
+            )
     assert "store" in payload
     assert "available" in payload["store"]
     assert payload["total_exposure"] == payload["cash"]["in_flight_amount"]
@@ -71,7 +86,7 @@ def test_run_finance_controller_payload_shape():
 
 
 def test_run_finance_controller_exceptions_carry_investigation_fields():
-    payload = run_finance_controller(seed=42, num_records=60)
+    payload = run_finance_controller(seed=42, num_records=60, use_llm=False)
     by_id = {item["id"]: item for item in payload["investigations"]}
     for exc in payload["exceptions"]:
         assert "evidence" in exc
@@ -139,6 +154,9 @@ def test_dashboard_and_cli_agree_on_seed_42(tmp_path):
     assert payload["matched"] == 56
     assert payload["exception_count"] == 23
     assert payload["match_rate"] == 0.7089
+    assert payload["kpis"]["exceptions_reduced"] >= 0
+    assert payload["kpis"]["match_precision_pass"] is True
+    assert payload["kpis"]["explanation_precision_pass"] is True
 
     root = Path(__file__).resolve().parents[1]
     env = {**os.environ, "PYTHONPATH": str(root / "src"), "FC_DB_PATH": str(tmp_path / "spawn.db")}
@@ -151,6 +169,7 @@ def test_dashboard_and_cli_agree_on_seed_42(tmp_path):
             "42",
             "--num-records",
             "80",
+            "--no-llm",
         ],
         cwd=root,
         env=env,
@@ -164,3 +183,20 @@ def test_dashboard_and_cli_agree_on_seed_42(tmp_path):
     assert spawned_payload["match_rate"] == 0.7089
     assert spawned_payload["matched"] == 56
     assert spawned_payload["total_groups"] == 79
+
+
+def test_csv_dir_cli_and_dashboard_agree(tmp_path, csv_fixture_dir):
+    """payments.csv/settlements.csv/bank.csv is a different batch than generate(seed=42)."""
+    import json
+
+    from finance_controller.cli import run as cli_run
+    from finance_controller.config import ReconConfig
+
+    payload = run_finance_controller(seed=42, data_dir=str(csv_fixture_dir), use_llm=False)
+    cli_run(ReconConfig(seed=42, num_records=80, use_llm=False), str(tmp_path / "report"), data_dir=str(csv_fixture_dir))
+    report = json.loads((tmp_path / "report.json").read_text())
+    assert payload["matched"] == report["matched"] == 47
+    assert payload["exception_count"] == len(report["exceptions"]) == 10
+    assert payload["total_groups"] == 57
+    assert payload["match_rate"] == report["match_rate"] == 0.8246
+    assert payload["value"]["est_analyst_minutes_saved"] == 47 * 8

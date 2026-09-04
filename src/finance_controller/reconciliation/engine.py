@@ -14,7 +14,8 @@ from finance_controller.models import (
     Source,
 )
 from finance_controller.reconciliation.dates import banking_days_between
-from finance_controller.reconciliation.gst import gst_bankers, gst_half_up, gst_on_mdr
+from finance_controller.reconciliation.gst import GST_TOLERANCE, gst_half_up, gst_on_mdr
+from finance_controller.reconciliation.identity import compact_reference, payee_key
 from finance_controller.reconciliation.matchers import (
     expected_net,
     exact_matches,
@@ -23,6 +24,7 @@ from finance_controller.reconciliation.matchers import (
     one_to_many_matches,
     tolerant_matches,
 )
+from finance_controller.reconciliation.narration import enrich_from_narration
 from finance_controller.reconciliation.normalize import normalize_records
 from finance_controller.reconciliation.utr import utr_status
 
@@ -61,10 +63,11 @@ class EngineResult:
 def _group_key(record: Record) -> str:
     if record.batch_id:
         return record.batch_id
-    payee = (record.payee or "").strip().upper()
+    ref = compact_reference(record.reference) or record.reference
+    payee = payee_key(record)
     if payee:
-        return f"{record.reference}|{payee}"
-    return record.reference
+        return f"{ref}|{payee}"
+    return ref
 
 
 def is_closed_group(members: list[Record]) -> bool:
@@ -92,7 +95,7 @@ def _gst_block(members: list[Record]) -> tuple[ExceptionType, str] | None:
         if rec.extra.get("gst_on_mdr"):
             mdr = Decimal(str(rec.extra.get("mdr_fee", "0")))
             expected_fee_gst = gst_on_mdr(mdr)
-            if abs(rec.gst - expected_fee_gst) > Decimal("0.05"):
+            if abs(rec.gst - expected_fee_gst) > GST_TOLERANCE:
                 return (
                     ExceptionType.GST_MISMATCH,
                     f"gst_on_fee {rec.gst} != 18% of mdr {mdr} ({expected_fee_gst})",
@@ -103,9 +106,11 @@ def _gst_block(members: list[Record]) -> tuple[ExceptionType, str] | None:
                 return ExceptionType.GST_ZERO_BUG, "gst is zero on a non-exempt taxable line"
             continue
         expected = gst_half_up(rec.amount)
-        bankers = gst_bankers(rec.amount)
-        if rec.gst not in (expected, bankers) and abs(rec.gst - expected) > Decimal("0.05"):
-            return ExceptionType.GST_MISMATCH, f"gst {rec.gst} not in {{half_up={expected}, bankers={bankers}}}"
+        if abs(rec.gst - expected) > GST_TOLERANCE:
+            return (
+                ExceptionType.GST_MISMATCH,
+                f"gst {rec.gst} != half_up {expected} (tol {GST_TOLERANCE})",
+            )
     return None
 
 
@@ -278,12 +283,12 @@ def _classify(
 
     if Source.BANK in sources and (Source.LEDGER in sources or Source.PSP in sources):
         bank = banks[0]
-        others = [r for r in members if r.source != Source.BANK]
-        if others:
-            return ExceptionType.AMOUNT_MISMATCH, (
-                f"bank {bank.amount} does not match counterpart amounts "
-                f"{[str(r.amount) for r in others]}"
-            )
+        counterpart = psps[0] if psps else ledgers[0]
+        expected = expected_net(counterpart, config.fee_rate)
+        return ExceptionType.AMOUNT_MISMATCH, (
+            f"bank {bank.amount} does not match expected net {expected} "
+            f"(gross {counterpart.amount}, fee {counterpart.fee})"
+        )
 
     return ExceptionType.UNMATCHED, "could not reconcile this group"
 
@@ -299,13 +304,23 @@ def reconcile(records: list[Record], config: ReconConfig) -> EngineResult:
             exceptions=[],
             records=[],
         )
-    normalized = normalize_records(records)
+    normalized = enrich_from_narration(normalize_records(records))
     used: set[str] = set()
 
     matches: list[MatchResult] = []
-    # Batched settlements are claimed first: batch_id is explicit in the data and
-    # the net-sum check is exact, so this is the strongest signal. Running the
-    # pairwise tiers first would consume the batch psp rows and starve this tier.
+    # Deterministic, tier-prioritized — not input-order greedy.
+    # Tiers run in fixed order (M → E → T → S). An earlier tier that emits a
+    # pair marks those ids used, so a later tier cannot form a competing pair
+    # on the same id. That is priority, not a race: the order is part of the
+    # contract (batch_id is the strongest signal; pairwise first would steal
+    # batch PSP rows).
+    # Within a tier, a pair is emitted only when the join key uniquely
+    # identifies one counterpart on both sides. Ambiguous keys are dropped,
+    # never first-come-first-serve. Competing banks for one batch or
+    # counterpart are resolved by sorting on record id, not list order.
+    # Same records → same closed groups and exception groups. Match ids
+    # (E0001, …) follow emission order and may change if the input list is
+    # shuffled; the groupings must not.
     matches.extend(many_to_one_matches(normalized, used, config))
     matches.extend(exact_matches(normalized, used))
     matches.extend(tolerant_matches(normalized, used, config))
