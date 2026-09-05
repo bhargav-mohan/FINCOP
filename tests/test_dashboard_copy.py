@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 import subprocess
 
@@ -46,11 +47,22 @@ def test_file_picker_replaces_selection_instead_of_merging():
     assert "setFiles(Array.from(e.target.files))" in src
     assert src.count("mergeFiles") == 2
     assert "next.set(\"n\"" in src or "next.set('n'" in src
+    npm = shutil.which("npm")
+    assert npm, "npm is not on PATH"
     result = subprocess.run(
-        ["npm", "test"],
+        [npm, "test"],
         cwd=DASHBOARD,
         capture_output=True,
         text=True,
         timeout=60,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_dashboard_finds_the_windows_venv_python():
+    src = (DASHBOARD / "lib" / "runFinanceController.ts").read_text(encoding="utf-8")
+    assert 'Scripts", "python.exe"' in src
+    assert 'platform === "win32"' in src
+    serve = (DASHBOARD / "scripts" / "serve.cjs").read_text(encoding="utf-8")
+    assert '"next", "dist", "bin", "next"' in serve
+    assert "process.execPath" in serve

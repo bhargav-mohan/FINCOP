@@ -17,8 +17,17 @@ export function repoRoot(): string {
 }
 
 function pythonBin(root: string): string {
-  const venv = path.join(root, ".venv", "bin", "python");
-  return existsSync(venv) ? venv : "python3";
+  const candidates = [
+    path.join(root, ".venv", "Scripts", "python.exe"),
+    path.join(root, ".venv", "bin", "python"),
+    path.join(root, ".venv", "bin", "python3"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return process.platform === "win32" ? "python" : "python3";
 }
 
 export { pythonBin };
@@ -61,7 +70,11 @@ function spawnPython(args: string[], timeoutMs?: number): Promise<Spawned> {
     });
     if (timeoutMs != null) {
       timer = setTimeout(() => {
-        child.kill("SIGKILL");
+        if (process.platform === "win32") {
+          child.kill();
+        } else {
+          child.kill("SIGKILL");
+        }
         finish({
           status: null,
           stdout,

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import sys
 
-from finance_controller.agent.exception_agent import attach_explanations
-from finance_controller.agent.llm import LlmBudget, LlmUnavailable, run_tool_loop
+from finance_controller.agent.exception_agent import attach_explanations, explain_leftovers_batch
+from finance_controller.agent.llm import LlmBudget, LlmUnavailable, is_free_lane, run_tool_loop
 from finance_controller.agent.tools import ReconWorkbench
 from finance_controller.config import ReconConfig
 from finance_controller.models import AgentAction, ExceptionType, ReconException
@@ -270,6 +270,7 @@ def orchestrate(result: EngineResult, config: ReconConfig) -> ReconWorkbench:
     bench = ReconWorkbench(result, config)
     pending = sorted(result.exceptions, key=_investigate_order)
     use_llm = bool(config.use_llm)
+    free_lane = is_free_lane(config.model)
     budget = LlmBudget() if use_llm else None
     total = len(pending)
     for i, exc in enumerate(pending, start=1):
@@ -287,7 +288,9 @@ def orchestrate(result: EngineResult, config: ReconConfig) -> ReconWorkbench:
             current is not None
             and not set(current.record_ids) <= result.closed_record_ids
         )
-        if still_open and use_llm:
+        # Paid models may tool-loop one leftover. :free OpenRouter dies if we
+        # do that seven times, so that lane waits for one batch call below.
+        if still_open and use_llm and not free_lane:
             _progress(f"[agent] leftovers {exception_id} ({i}/{total}) with llm")
             try:
                 investigate_with_llm(bench, exception_id, config, budget)
@@ -303,8 +306,16 @@ def orchestrate(result: EngineResult, config: ReconConfig) -> ReconWorkbench:
         for e in result.exceptions
         if not set(e.record_ids) <= result.closed_record_ids
     ]
-    # Rule hypotheses already cite refs/amounts. A second GLM pass per leftover
-    # was slow and surfaced as "AI assistant was unavailable".
+    if use_llm and free_lane and remaining:
+        _progress(f"[agent] explaining {len(remaining)} leftovers in one free-lane call")
+        try:
+            remaining = explain_leftovers_batch(
+                remaining, model=config.model, provider=config.provider, budget=budget
+            )
+        except LlmUnavailable as exc_err:
+            use_llm = False
+            bench.warnings.append(str(exc_err))
+            _progress(f"[agent] {exc_err} — leftover copy stays on rules")
     if config.use_llm and not use_llm:
         if not any("quota" in w.lower() for w in bench.warnings):
             if not any("time cap" in w.lower() or "timed out" in w.lower() or "budget" in w.lower() for w in bench.warnings):

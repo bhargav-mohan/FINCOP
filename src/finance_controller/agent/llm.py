@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from finance_controller.config import env_secret
+from finance_controller.config import env_secret, resolve_model_candidates
 
 
 class LlmUnavailable(RuntimeError):
@@ -161,6 +161,11 @@ def _llm_error_text(exc: BaseException) -> str:
             "Model quota was exceeded. "
             "Rules finished the leftovers. Wait a minute or raise the quota."
         )
+    if "402" in text or "can only afford" in lowered or ("credits" in lowered and "token" in lowered):
+        return (
+            "The OpenRouter key is valid but has no credits left. "
+            "Rules finished the leftovers. Add credits, or use a Gemini/OpenAI/Claude key."
+        )
     if "timed out" in lowered or "timeout" in lowered:
         return (
             "The model timed out on a leftover. "
@@ -210,21 +215,26 @@ def _is_claude_provider(provider: str) -> bool:
     return _normalize_provider(provider) == "claude"
 
 
-def _glm_call_kwargs() -> dict[str, Any]:
-    """GLM 5.2 thinks by default; disable that so JSON/tool calls stay structured."""
-    return {
-        "max_tokens": 1024,
-        "extra_body": {"thinking": {"type": "disabled"}},
-    }
+def is_free_lane(model: str) -> bool:
+    return ":free" in (model or "").lower()
+
+
+def _glm_call_kwargs(*, free: bool = False, model: str = "") -> dict[str, Any]:
+    extra: dict[str, Any] = {"max_tokens": 512 if free else 1024}
+    # Thinking-off is a Z.ai/GLM body. Gemma/Minimax reject or ignore it as prose.
+    if (model or "").startswith("z-ai/") or "glm-5" in (model or "").lower():
+        extra["extra_body"] = {"thinking": {"type": "disabled"}}
+    return extra
 
 
 def _claude_call_kwargs() -> dict[str, Any]:
     return {"max_tokens": 1024}
 
 
-def _provider_call_kwargs(provider: str) -> dict[str, Any]:
+def _provider_call_kwargs(provider: str, model: str = "") -> dict[str, Any]:
+    free = is_free_lane(model)
     if _is_glm_provider(provider):
-        extra = _glm_call_kwargs()
+        extra = _glm_call_kwargs(free=free, model=model)
         if GLM_TIMEOUT_SEC is not None:
             extra["timeout_cap"] = GLM_TIMEOUT_SEC
         return extra
@@ -232,6 +242,8 @@ def _provider_call_kwargs(provider: str) -> dict[str, Any]:
         extra = _claude_call_kwargs()
         extra["timeout_cap"] = LLM_TIMEOUT_SEC
         return extra
+    if free:
+        return {"max_tokens": 512}
     return {}
 
 
@@ -251,10 +263,16 @@ def _parse_json_object(raw: str) -> dict:
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
-        start, end = content.find("{"), content.rfind("}")
-        if start < 0 or end <= start:
+        obj_start, obj_end = content.find("{"), content.rfind("}")
+        arr_start, arr_end = content.find("["), content.rfind("]")
+        if obj_start >= 0 and obj_end > obj_start and (arr_start < 0 or obj_start <= arr_start):
+            data = json.loads(content[obj_start : obj_end + 1])
+        elif arr_start >= 0 and arr_end > arr_start:
+            data = json.loads(content[arr_start : arr_end + 1])
+        else:
             raise LlmUnavailable("LLM did not return a JSON object") from None
-        data = json.loads(content[start : end + 1])
+    if isinstance(data, list):
+        return {"items": data}
     if not isinstance(data, dict):
         raise LlmUnavailable("LLM did not return a JSON object")
     return data
@@ -276,6 +294,29 @@ def _openai_call(client, *, budget: LlmBudget | None = None, timeout_cap: float 
         raise LlmUnavailable(_llm_error_text(exc)) from None
 
 
+def _can_try_next_model(message: str) -> bool:
+    text = (message or "").lower()
+    return any(
+        token in text
+        for token in (
+            "429",
+            "402",
+            "404",
+            "503",
+            "quota",
+            "rate",
+            "credits",
+            "not found",
+            "overloaded",
+            "can only afford",
+            "json object",
+            "json",
+            "400",
+            "response_format",
+        )
+    )
+
+
 def complete_json(
     prompt: str,
     *,
@@ -287,9 +328,6 @@ def complete_json(
     if budget is not None:
         budget.check()
     client = _client(provider)
-    extra: dict[str, Any] = _provider_call_kwargs(provider)
-    if _normalize_provider(provider) == "openai":
-        extra["response_format"] = {"type": "json_object"}
     system_content = system or (
         "You classify finance reconciliation exceptions. "
         "Reply with JSON keys: hypothesis_type, explanation, "
@@ -297,21 +335,33 @@ def complete_json(
         "confidence is a number 0-1. "
         "Never mark an unresolved item as matched. JSON only."
     )
-    response = _openai_call(
-        client,
-        budget=budget,
-        model=model,
-        temperature=0,
-        messages=[
-            {
-                "role": "system",
-                "content": system_content,
-            },
-            {"role": "user", "content": prompt},
-        ],
-        **extra,
-    )
-    return _parse_json_object(_message_text(response.choices[0].message))
+    last_error: LlmUnavailable | None = None
+    candidates = resolve_model_candidates(model, provider)
+    for candidate in candidates:
+        extra: dict[str, Any] = _provider_call_kwargs(provider, candidate)
+        if _normalize_provider(provider) in {"openai", "glm", "openrouter"}:
+            extra["response_format"] = {"type": "json_object"}
+        try:
+            response = _openai_call(
+                client,
+                budget=budget,
+                model=candidate,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_content,
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                **extra,
+            )
+            return _parse_json_object(_message_text(response.choices[0].message))
+        except LlmUnavailable as exc:
+            last_error = exc
+            if candidate == candidates[-1] or not _can_try_next_model(str(exc)):
+                raise
+    raise last_error or LlmUnavailable("LLM request failed")
 
 
 def run_tool_loop(
@@ -335,7 +385,7 @@ def run_tool_loop(
     for _ in range(max_rounds):
         if budget is not None:
             budget.check()
-        extra = _provider_call_kwargs(provider)
+        extra = _provider_call_kwargs(provider, model)
         response = _openai_call(
             client,
             budget=budget,

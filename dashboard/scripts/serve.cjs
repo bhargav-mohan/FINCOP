@@ -13,7 +13,7 @@ const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const nextBin = path.join(root, "node_modules", ".bin", "next");
+const nextCli = path.join(root, "node_modules", "next", "dist", "bin", "next");
 const buildIdPath = path.join(root, ".next", "BUILD_ID");
 
 function mtime(p) {
@@ -44,7 +44,11 @@ function latestMtime(dir) {
 }
 
 function run(args) {
-  const result = spawnSync(nextBin, args, { cwd: root, stdio: "inherit", shell: false });
+  const result = spawnSync(process.execPath, [nextCli, ...args], {
+    cwd: root,
+    stdio: "inherit",
+    shell: false,
+  });
   process.exit(result.status === null ? 1 : result.status);
 }
 
@@ -58,7 +62,11 @@ const sourceMtime = Math.max(
 );
 const stale = !existsSync(buildIdPath) || sourceMtime > mtime(buildIdPath);
 if (stale) {
-  const build = spawnSync(nextBin, ["build"], { cwd: root, stdio: "inherit", shell: false });
+  const build = spawnSync(process.execPath, [nextCli, "build"], {
+    cwd: root,
+    stdio: "inherit",
+    shell: false,
+  });
   if (build.status !== 0) {
     process.exit(build.status === null ? 1 : build.status);
   }

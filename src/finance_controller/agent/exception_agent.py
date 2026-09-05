@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from finance_controller.agent.llm import LlmBudget, LlmUnavailable, complete_json
 from finance_controller.models import (
     ExceptionHypothesis,
@@ -148,6 +150,78 @@ def attach_explanations(exceptions: list[ReconException]) -> list[ReconException
         hyp = ensure_instance_explanation(hyp, exc)
         attached.append(exc.model_copy(update={"hypothesis": hyp}))
     return attached
+
+
+def explain_leftovers_batch(
+    exceptions: list[ReconException],
+    *,
+    model: str,
+    provider: str,
+    budget: LlmBudget | None = None,
+) -> list[ReconException]:
+    """One JSON call for every leftover. Free OpenRouter dies if we tool-loop each row."""
+    if not exceptions:
+        return exceptions
+    payload = [
+        {
+            "id": exc.exception_id,
+            "type": exc.exception_type.value,
+            "reason": exc.reason,
+            "refs": list(exc.references)[:6],
+        }
+        for exc in exceptions[:12]
+    ]
+    ids = [row["id"] for row in payload]
+    data = complete_json(
+        (
+            "Explain every open item. Return one object per id. "
+            f"Required ids: {', '.join(ids)}. "
+            "Do not mark any as matched. JSON only.\n"
+            + json.dumps(payload)
+        ),
+        model=model,
+        provider=provider,
+        budget=budget,
+        system=(
+            "You explain finance leftovers. Reply with JSON only: "
+            '{"items":[{"id":"X0001","explanation":"...","suggested_action":"...","confidence":0.7}]}. '
+            "Include every required id. Never say an item is matched or closed."
+        ),
+    )
+    rows = data.get("items") if isinstance(data.get("items"), list) else []
+    by_id = {
+        str(row.get("id")): row
+        for row in rows
+        if isinstance(row, dict) and row.get("id")
+    }
+    updated: list[ReconException] = []
+    for exc in exceptions:
+        row = by_id.get(exc.exception_id)
+        if not row:
+            updated.append(exc)
+            continue
+        base = rule_hypothesis(exc)
+        try:
+            confidence = max(0.0, min(1.0, float(row.get("confidence", 0.6))))
+        except (TypeError, ValueError):
+            confidence = base.confidence
+        updated.append(
+            exc.model_copy(
+                update={
+                    "hypothesis": ExceptionHypothesis(
+                        hypothesis_type=exc.exception_type,
+                        explanation=str(row.get("explanation") or "").strip() or base.explanation,
+                        suggested_action=str(row.get("suggested_action") or "").strip()
+                        or base.suggested_action,
+                        confidence=confidence,
+                        produced_by="llm",
+                    )
+                }
+            )
+        )
+    if not any(exc.hypothesis and exc.hypothesis.produced_by == "llm" for exc in updated):
+        raise LlmUnavailable("LLM did not return a JSON object")
+    return updated
 
 
 def _prompt(exception: ReconException, nearby: list[Record]) -> str:

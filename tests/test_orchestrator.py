@@ -148,6 +148,73 @@ def test_llm_reconcile_tool_cannot_close_when_validator_rejects():
     assert exc.exception_id in {e.exception_id for e in result.exceptions}
 
 
+def test_free_lane_explains_leftovers_in_one_call(monkeypatch):
+    from finance_controller.agent import orchestrator as orch
+    from finance_controller.data.synthetic import generate
+
+    calls = {"batch": 0, "tools": 0}
+
+    def fake_batch(exceptions, **kwargs):
+        calls["batch"] += 1
+        return exceptions
+
+    def fake_tools(*args, **kwargs):
+        calls["tools"] += 1
+
+    monkeypatch.setattr(orch, "explain_leftovers_batch", fake_batch)
+    monkeypatch.setattr(orch, "investigate_with_llm", fake_tools)
+    config = ReconConfig(
+        seed=42,
+        num_records=60,
+        inject_exceptions=12,
+        inject_edges=0,
+        use_llm=True,
+        provider="glm",
+        model="z-ai/glm-5.2:free",
+    )
+    result = reconcile(generate(config).all_records, config)
+    assert result.exceptions
+    orchestrate(result, config)
+    assert calls["batch"] == 1
+    assert calls["tools"] == 0
+
+
+def test_explain_leftovers_batch_attaches_llm_copy(monkeypatch):
+    from decimal import Decimal
+
+    from finance_controller.agent import exception_agent as agent
+    from finance_controller.agent.exception_agent import explain_leftovers_batch
+    from finance_controller.models import ExceptionType, ReconException, Source
+
+    monkeypatch.setattr(
+        agent,
+        "complete_json",
+        lambda *args, **kwargs: {
+            "items": [
+                {
+                    "id": "X0001",
+                    "explanation": "Bank credit never landed for PAY-1.",
+                    "suggested_action": "Ask ops for the UTR.",
+                    "confidence": 0.81,
+                }
+            ]
+        },
+    )
+    leftover = ReconException(
+        exception_id="X0001",
+        exception_type=ExceptionType.MISSING_IN_BANK,
+        record_ids=["L1"],
+        references=["PAY-1"],
+        sources_involved=[Source.LEDGER],
+        amounts={"ledger": Decimal("10.00")},
+        reason="no bank credit",
+    )
+    out = explain_leftovers_batch([leftover], model="z-ai/glm-5.2:free", provider="glm")
+    assert out[0].hypothesis is not None
+    assert out[0].hypothesis.produced_by == "llm"
+    assert "PAY-1" in out[0].hypothesis.explanation or "Bank credit" in out[0].hypothesis.explanation
+
+
 def test_orchestrate_fallback_without_api_key_completes_seeded_batch():
     from finance_controller.data.synthetic import generate
 

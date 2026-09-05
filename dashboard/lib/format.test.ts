@@ -46,6 +46,24 @@ describe("friendlyWarning", () => {
     );
   });
 
+  it("maps a JSON-parse miss instead of a generic unavailable banner", () => {
+    const msg = friendlyWarning("LLM did not return a JSON object");
+    assert.equal(
+      msg,
+      "The free models did not return usable notes. Rules wrote the leftover reasons instead."
+    );
+  });
+
+  it("maps an OpenRouter 402 to a credits message", () => {
+    const msg = friendlyWarning(
+      "LLM request failed: APIStatusError: Error code: 402 - can only afford 165 tokens"
+    );
+    assert.equal(
+      msg,
+      "The OpenRouter key is valid but has no credits. Rules finished the leftovers. Add credits, or paste a Gemini, OpenAI, or Claude key."
+    );
+  });
+
   it("maps a GLM time cap instead of a generic unavailable banner", () => {
     const msg = friendlyWarning("LLM budget of 90s exhausted; falling back to rules");
     assert.equal(

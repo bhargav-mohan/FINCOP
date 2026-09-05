@@ -5,16 +5,20 @@ from finance_controller.agent.llm import (
     _client,
     _llm_error_text,
     _parse_json_object,
+    _provider_call_kwargs,
+    is_free_lane,
 )
 from finance_controller.config import (
     CLAUDE_DEFAULT_MODEL,
     GEMINI_DEFAULT_MODEL,
     OPENAI_DEFAULT_MODEL,
+    OPENROUTER_FREE_MODELS,
     OPENROUTER_GLM_MODEL,
     ReconConfig,
     ZAI_GLM_MODEL,
     resolve_default_model,
     resolve_default_provider,
+    resolve_model_candidates,
 )
 
 
@@ -61,6 +65,7 @@ def test_parse_json_object_strips_fences_and_prose():
     assert _parse_json_object('{"ok": true}') == {"ok": True}
     assert _parse_json_object("```json\n{\"ok\": true}\n```") == {"ok": True}
     assert _parse_json_object("here you go\n{\"ok\": true}\n") == {"ok": True}
+    assert _parse_json_object('[{"id": "X0001"}]') == {"items": [{"id": "X0001"}]}
 
 
 def test_quota_error_is_named_not_swallowed():
@@ -68,6 +73,16 @@ def test_quota_error_is_named_not_swallowed():
         RuntimeError("Error code: 429 - quota exceeded for metric generate_content_free_tier_requests")
     )
     assert "quota" in text.lower()
+
+
+def test_openrouter_402_names_missing_credits():
+    text = _llm_error_text(
+        RuntimeError(
+            "Error code: 402 - You requested up to 1024 tokens, but can only afford 165"
+        )
+    )
+    assert "credits" in text.lower()
+    assert "unavailable" not in text.lower()
 
 
 def test_budget_error_names_the_time_cap():
@@ -158,3 +173,75 @@ def test_openai_without_key_raises():
 def test_gemini_without_key_raises():
     with pytest.raises(LlmUnavailable, match="GEMINI_API_KEY"):
         _client("gemini")
+
+
+def test_free_lane_uses_a_small_token_cap():
+    assert is_free_lane("z-ai/glm-5.2:free")
+    assert not is_free_lane("z-ai/glm-5.2")
+    assert _provider_call_kwargs("glm", "z-ai/glm-5.2:free")["max_tokens"] == 512
+    assert _provider_call_kwargs("glm", "z-ai/glm-5.2")["max_tokens"] == 1024
+    assert "extra_body" not in _provider_call_kwargs("glm", "google/gemma-4-31b-it:free")
+    assert "extra_body" in _provider_call_kwargs("glm", "z-ai/glm-5.2:free")
+
+
+def test_free_lane_tries_more_than_one_openrouter_model():
+    names = resolve_model_candidates("z-ai/glm-5.2:free", "glm")
+    assert names[0] == "z-ai/glm-5.2:free"
+    assert "google/gemma-4-31b-it:free" in names
+    assert "minimax/minimax-m2.7:free" in names
+    assert names == list(dict.fromkeys(names))
+    assert set(OPENROUTER_FREE_MODELS) <= set(names)
+
+
+def test_complete_json_falls_through_to_the_next_model(monkeypatch):
+    from finance_controller.agent import llm as llm_mod
+
+    calls: list[str] = []
+
+    class _Msg:
+        content = '{"ok": true}'
+
+    class _Choice:
+        message = _Msg()
+
+    class _Resp:
+        choices = [_Choice()]
+
+    def fake_call(client, **kwargs):
+        calls.append(kwargs["model"])
+        if kwargs["model"].endswith("glm-5.2:free"):
+            raise LlmUnavailable("Model quota was exceeded.")
+        return _Resp()
+
+    monkeypatch.setattr(llm_mod, "_client", lambda provider: object())
+    monkeypatch.setattr(llm_mod, "_openai_call", fake_call)
+    data = llm_mod.complete_json("{}", model="z-ai/glm-5.2:free", provider="glm")
+    assert data == {"ok": True}
+    assert calls[0] == "z-ai/glm-5.2:free"
+    assert calls[1] != "z-ai/glm-5.2:free"
+
+
+def test_complete_json_falls_through_when_first_model_returns_prose(monkeypatch):
+    from finance_controller.agent import llm as llm_mod
+
+    class _Msg:
+        def __init__(self, content):
+            self.content = content
+
+    class _Choice:
+        def __init__(self, content):
+            self.message = _Msg(content)
+
+    class _Resp:
+        def __init__(self, content):
+            self.choices = [_Choice(content)]
+
+    def fake_call(client, **kwargs):
+        if "gemma" in kwargs["model"]:
+            return _Resp("sure, here are some thoughts")
+        return _Resp('{"items":[{"id":"X0001","explanation":"ok"}]}')
+
+    monkeypatch.setattr(llm_mod, "_client", lambda provider: object())
+    monkeypatch.setattr(llm_mod, "_openai_call", fake_call)
+    data = llm_mod.complete_json("{}", model="google/gemma-4-31b-it:free", provider="glm")
+    assert data["items"][0]["id"] == "X0001"

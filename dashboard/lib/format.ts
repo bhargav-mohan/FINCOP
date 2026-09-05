@@ -75,7 +75,15 @@ export function friendlyWarning(raw: string): string | null {
     return "The model provider is busy right now. Rules finished the leftovers. Wait a minute and run again.";
   }
   if (text.includes("quota") || text.includes("429") || text.includes("resource_exhausted")) {
-    return "The model quota was used up, so rules finished the leftovers. Wait about a minute and run again.";
+    return "The free model lane is rate-limited. Rules finished the leftovers. Wait a minute and run again.";
+  }
+  if (
+    text.includes("402") ||
+    text.includes("can only afford") ||
+    text.includes("no credits") ||
+    (text.includes("credits") && text.includes("token"))
+  ) {
+    return "The OpenRouter key is valid but has no credits. Rules finished the leftovers. Add credits, or paste a Gemini, OpenAI, or Claude key.";
   }
   if (text.includes("budget") || text.includes("exhausted") || text.includes("time cap")) {
     return "The model hit the time cap for this review. Rules finished the remaining leftovers.";
@@ -109,6 +117,9 @@ export function friendlyWarning(raw: string): string | null {
   }
   if (text.includes("hypotheses came from rules")) {
     return null;
+  }
+  if (text.includes("json object") || text.includes("did not return a json")) {
+    return "The free models did not return usable notes. Rules wrote the leftover reasons instead.";
   }
   if (text.includes("llm") || text.includes("rule engine") || text.includes("leftovers stay")) {
     return "The AI assistant was unavailable, so leftovers were reviewed by built-in rules instead.";

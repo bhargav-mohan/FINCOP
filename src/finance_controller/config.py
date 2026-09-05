@@ -8,8 +8,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-OPENROUTER_GLM_MODEL = "z-ai/glm-5.2"
+OPENROUTER_GLM_MODEL = "google/gemma-4-31b-it:free"
 ZAI_GLM_MODEL = "glm-5.2"
+OPENROUTER_FREE_MODELS = (
+    "google/gemma-4-31b-it:free",
+    "minimax/minimax-m2.7:free",
+    "z-ai/glm-5.2:free",
+)
 OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
 CLAUDE_DEFAULT_MODEL = "claude-sonnet-4-6"
 GEMINI_DEFAULT_MODEL = "gemini-3.6-flash"
@@ -108,6 +113,22 @@ def resolve_default_model(provider: str | None = None) -> str:
             return glm or OPENROUTER_GLM_MODEL
         return glm or ZAI_GLM_MODEL
     return _env("GEMINI_MODEL") or _env("OPENAI_MODEL") or GEMINI_DEFAULT_MODEL
+
+
+def resolve_model_candidates(model: str, provider: str = "") -> list[str]:
+    extra = [item.strip() for item in _env("GLM_MODELS").split(",") if item.strip()]
+    provider = _PROVIDER_ALIASES.get((provider or "").strip().lower(), (provider or "").strip().lower())
+    names = [model, *extra]
+    if provider in {"glm", "openrouter", "zai", "zhipu"} and (
+        extra or ":free" in (model or "").lower()
+    ):
+        names.extend(OPENROUTER_FREE_MODELS)
+    seen: list[str] = []
+    for name in names:
+        name = (name or "").strip()
+        if name and name not in seen:
+            seen.append(name)
+    return seen or [(model or "").strip() or OPENROUTER_GLM_MODEL]
 
 
 DEFAULT_MODEL = resolve_default_model()

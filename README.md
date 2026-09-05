@@ -58,6 +58,8 @@ The model never sits on the close path. A suggestion that fails `_block_close` s
 
 ## Run it (no API key)
 
+macOS / Linux:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -65,12 +67,22 @@ pip install -e ".[dev]"
 ./verify.sh
 ```
 
+Windows (cmd):
+
+```bat
+py -3 -m venv .venv
+.venv\Scripts\activate
+pip install -e ".[dev]"
+verify.cmd
+```
+
 That runs the tests and checks that the published figures in `fixtures/published_metrics.json` have not drifted. Non-zero exit if a number moved.
 
 Then pick one:
 
 ```bash
-./scripts/demo.sh                          # Razorpay recon ZIP → report.json
+./scripts/demo.sh                          # macOS / Linux
+scripts\demo.cmd                           # Windows
 cd dashboard && npm install && npm run dev # upload fixtures/razorpay_sample/batch.zip
 python -m finance_controller.qa "how much money is stuck?" --report report.json
 ```
@@ -196,7 +208,7 @@ GLM (OpenRouter):
 ```
 LLM_PROVIDER=glm
 OPENROUTER_API_KEY=PASTE_HERE
-GLM_MODEL=z-ai/glm-5.2
+GLM_MODEL=google/gemma-4-31b-it:free
 ```
 
 GLM (Z.ai):
