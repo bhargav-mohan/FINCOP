@@ -8,12 +8,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-OPENROUTER_GLM_MODEL = "google/gemma-4-31b-it:free"
+OPENROUTER_GLM_MODEL = "minimax/minimax-m2.7:free"
 ZAI_GLM_MODEL = "glm-5.2"
 OPENROUTER_FREE_MODELS = (
-    "google/gemma-4-31b-it:free",
     "minimax/minimax-m2.7:free",
     "z-ai/glm-5.2:free",
+    "google/gemma-4-31b-it:free",
+    "minimax/minimax-m3:free",
+    "poolside/laguna-s-2.1:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "google/gemma-4-26b-a4b-it:free",
 )
 OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
 CLAUDE_DEFAULT_MODEL = "claude-sonnet-4-6"

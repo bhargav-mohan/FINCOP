@@ -59,6 +59,23 @@ def test_file_picker_replaces_selection_instead_of_merging():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_cash_and_quality_labels_do_not_restate_engine_closes():
+    cash = (DASHBOARD / "components" / "CashBooks.tsx").read_text(encoding="utf-8")
+    assert "Bank credited includes unmatched statement rows" in cash
+    assert "fees on closed loops" in cash
+    quality = (DASHBOARD / "components" / "AccuracyPanel.tsx").read_text(encoding="utf-8")
+    assert "Of the {openBefore} open items" in quality
+    assert "investigator added" in quality
+    assert "Explanation precision" not in quality
+    assert "Rules alone" not in quality
+    assert "Est. minutes saved" not in quality
+    strip = (DASHBOARD / "components" / "KpiStrip.tsx").read_text(encoding="utf-8")
+    assert strip.count("Matches correct") == 0
+    assert "Explanations right" in strip
+    verdict = (DASHBOARD / "components" / "Verdict.tsx").read_text(encoding="utf-8")
+    assert "Time saved" not in verdict
+
+
 def test_dashboard_finds_the_windows_venv_python():
     src = (DASHBOARD / "lib" / "runFinanceController.ts").read_text(encoding="utf-8")
     assert 'Scripts", "python.exe"' in src

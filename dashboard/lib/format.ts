@@ -75,7 +75,7 @@ export function friendlyWarning(raw: string): string | null {
     return "The model provider is busy right now. Rules finished the leftovers. Wait a minute and run again.";
   }
   if (text.includes("quota") || text.includes("429") || text.includes("resource_exhausted")) {
-    return "The free model lane is rate-limited. Rules finished the leftovers. Wait a minute and run again.";
+    return null;
   }
   if (
     text.includes("402") ||
@@ -91,7 +91,11 @@ export function friendlyWarning(raw: string): string | null {
   if (text.includes("timed out") || text.includes("timeout")) {
     return "The model took too long on a leftover. Rules finished the rest.";
   }
-  if (text.includes("openrouter_api_key") || text.includes("z-ai/glm") || text.includes("zai_api_key")) {
+  if (
+    text.includes("openrouter_api_key") ||
+    text.includes("zai_api_key") ||
+    text.includes("glm_api_key")
+  ) {
     return "No GLM key loaded. Add OPENROUTER_API_KEY (or ZAI_API_KEY) to the repo .env and restart the dashboard.";
   }
   if (

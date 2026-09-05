@@ -208,7 +208,7 @@ GLM (OpenRouter):
 ```
 LLM_PROVIDER=glm
 OPENROUTER_API_KEY=PASTE_HERE
-GLM_MODEL=google/gemma-4-31b-it:free
+GLM_MODEL=minimax/minimax-m2.7:free
 ```
 
 GLM (Z.ai):

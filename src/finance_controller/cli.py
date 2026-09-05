@@ -96,7 +96,7 @@ def run(
     razorpay_live: bool = False,
     fail_under: float | None = None,
 ) -> int:
-    console = Console()
+    console = Console(legacy_windows=False)
     ingested = None
     live_key: str | None = None
     if razorpay_live:

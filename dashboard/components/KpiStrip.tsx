@@ -19,7 +19,6 @@ export function KpiStrip({ data }: { data: DashboardRun }) {
   if (!kpis) {
     return null;
   }
-  const matchValue = kpis.match_precision == null ? "n/a" : formatPct(kpis.match_precision);
   const explValue = kpis.explanation_precision == null ? "n/a" : formatPct(kpis.explanation_precision);
   return (
     <section className="space-y-2">
@@ -29,14 +28,7 @@ export function KpiStrip({ data }: { data: DashboardRun }) {
           We score matches against labeled rows. Unresolved items stay on the list — never auto-passed.
         </p>
       </div>
-      <Panel className="grid gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric
-          label="Matches correct"
-          title="Closed items whose ground-truth label is MATCHED"
-          value={matchValue}
-          hint={`${gateLabel(kpis.match_precision_pass)} · target ≥${formatPct(kpis.match_precision_threshold)}`}
-          className={`min-w-[7rem] ${gateClass(kpis.match_precision_pass)}`}
-        />
+      <Panel className="grid gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
         <Metric
           label="Fewer leftovers"
           title="Engine leftovers minus items still open after the investigator"

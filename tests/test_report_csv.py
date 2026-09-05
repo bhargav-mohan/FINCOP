@@ -45,6 +45,7 @@ def test_render_text_states_overflag_policy_and_false_positive_count():
         batch_source=BatchSource.GENERATED,
     )
     text = render_text(report)
+    text.encode("cp1252")
     assert "over-flagged on purpose" in text
     assert "false close corrupts the ledger" in text
     assert f"false_positives={report.accuracy.false_positives}" in text

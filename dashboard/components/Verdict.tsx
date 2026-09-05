@@ -6,7 +6,6 @@ import { Panel } from "./ui/Panel";
 export function Verdict({ data }: { data: DashboardRun }) {
   const total = data.total_groups || data.matched + data.exception_count;
   const closedPct = (data.match_rate || 0) * 100;
-  const minutes = data.value?.est_analyst_minutes_saved;
   const leftover = data.exception_count;
 
   const chips = [
@@ -15,7 +14,6 @@ export function Verdict({ data }: { data: DashboardRun }) {
     { label: "In the bank", value: formatInr(data.cash.closed_bank_net) },
     { label: "Waiting", value: formatInr(data.cash.in_flight_amount) },
     { label: "Overdue", value: String(data.cash.aged_out_count) },
-    { label: "Time saved", value: minutes == null ? "n/a" : `${minutes} min` },
   ];
 
   return (

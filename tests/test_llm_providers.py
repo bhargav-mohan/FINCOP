@@ -189,6 +189,8 @@ def test_free_lane_tries_more_than_one_openrouter_model():
     assert names[0] == "z-ai/glm-5.2:free"
     assert "google/gemma-4-31b-it:free" in names
     assert "minimax/minimax-m2.7:free" in names
+    assert "minimax/minimax-m3:free" in names
+    assert "poolside/laguna-s-2.1:free" in names
     assert names == list(dict.fromkeys(names))
     assert set(OPENROUTER_FREE_MODELS) <= set(names)
 
@@ -210,7 +212,7 @@ def test_complete_json_falls_through_to_the_next_model(monkeypatch):
     def fake_call(client, **kwargs):
         calls.append(kwargs["model"])
         if kwargs["model"].endswith("glm-5.2:free"):
-            raise LlmUnavailable("Model quota was exceeded.")
+            raise LlmUnavailable("The model name in .env was not found.")
         return _Resp()
 
     monkeypatch.setattr(llm_mod, "_client", lambda provider: object())
@@ -219,6 +221,23 @@ def test_complete_json_falls_through_to_the_next_model(monkeypatch):
     assert data == {"ok": True}
     assert calls[0] == "z-ai/glm-5.2:free"
     assert calls[1] != "z-ai/glm-5.2:free"
+
+
+def test_rate_limit_does_not_fan_out_to_other_models(monkeypatch):
+    from finance_controller.agent import llm as llm_mod
+
+    calls: list[str] = []
+
+    def fake_call(client, **kwargs):
+        calls.append(kwargs["model"])
+        raise LlmUnavailable("Model quota was exceeded.")
+
+    monkeypatch.setattr(llm_mod, "RATE_LIMIT_RETRY_SEC", 0)
+    monkeypatch.setattr(llm_mod, "_client", lambda provider: object())
+    monkeypatch.setattr(llm_mod, "_openai_call", fake_call)
+    with pytest.raises(LlmUnavailable, match="quota"):
+        llm_mod.complete_json("{}", model="z-ai/glm-5.2:free", provider="glm")
+    assert calls == ["z-ai/glm-5.2:free"]
 
 
 def test_complete_json_falls_through_when_first_model_returns_prose(monkeypatch):

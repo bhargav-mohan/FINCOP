@@ -30,6 +30,14 @@ describe("friendlyWarning", () => {
     );
   });
 
+  it("does not treat a GLM model id as a missing key", () => {
+    const msg = friendlyWarning("The model name in .env was not found: z-ai/glm-5.2:free");
+    assert.equal(
+      msg,
+      "The model name in .env was not found. Set GEMINI_MODEL, OPENAI_MODEL, CLAUDE_MODEL, or GLM_MODEL to match LLM_PROVIDER."
+    );
+  });
+
   it("maps a missing OpenAI key", () => {
     const msg = friendlyWarning("OPENAI_API_KEY is not set");
     assert.equal(
@@ -44,6 +52,10 @@ describe("friendlyWarning", () => {
       msg,
       "No Claude key loaded. Add ANTHROPIC_API_KEY to the repo .env and restart the dashboard."
     );
+  });
+
+  it("hides a free-lane rate limit because rules already finished", () => {
+    assert.equal(friendlyWarning("Model quota was exceeded. Rules finished the leftovers."), null);
   });
 
   it("maps a JSON-parse miss instead of a generic unavailable banner", () => {

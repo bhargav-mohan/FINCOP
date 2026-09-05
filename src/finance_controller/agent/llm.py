@@ -28,6 +28,9 @@ LLM_TIMEOUT_SEC: float | None = 12.0
 GLM_TIMEOUT_SEC: float | None = 12.0
 LLM_MAX_RETRIES = 1
 LLM_BUDGET_SEC: float | None = None
+# One pause after a 429. 0 disables the wait (tests). Do not fan out to
+# other OpenRouter free models on the same key — that burns the limit.
+RATE_LIMIT_RETRY_SEC = 8.0
 
 
 class LlmBudget:
@@ -294,17 +297,24 @@ def _openai_call(client, *, budget: LlmBudget | None = None, timeout_cap: float 
         raise LlmUnavailable(_llm_error_text(exc)) from None
 
 
+def _is_rate_limited(message: str) -> bool:
+    text = (message or "").lower()
+    return any(
+        token in text
+        for token in ("429", "quota", "rate limit", "rate-limited", "resource_exhausted")
+    )
+
+
 def _can_try_next_model(message: str) -> bool:
+    if _is_rate_limited(message):
+        return False
     text = (message or "").lower()
     return any(
         token in text
         for token in (
-            "429",
             "402",
             "404",
             "503",
-            "quota",
-            "rate",
             "credits",
             "not found",
             "overloaded",
@@ -337,28 +347,42 @@ def complete_json(
     )
     last_error: LlmUnavailable | None = None
     candidates = resolve_model_candidates(model, provider)
+    rate_retried = False
     for candidate in candidates:
         extra: dict[str, Any] = _provider_call_kwargs(provider, candidate)
         if _normalize_provider(provider) in {"openai", "glm", "openrouter"}:
             extra["response_format"] = {"type": "json_object"}
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": prompt},
+        ]
         try:
             response = _openai_call(
                 client,
                 budget=budget,
                 model=candidate,
                 temperature=0,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": system_content,
-                    },
-                    {"role": "user", "content": prompt},
-                ],
+                messages=messages,
                 **extra,
             )
             return _parse_json_object(_message_text(response.choices[0].message))
         except LlmUnavailable as exc:
             last_error = exc
+            if _is_rate_limited(str(exc)) and not rate_retried and RATE_LIMIT_RETRY_SEC > 0:
+                rate_retried = True
+                time.sleep(RATE_LIMIT_RETRY_SEC)
+                try:
+                    response = _openai_call(
+                        client,
+                        budget=budget,
+                        model=candidate,
+                        temperature=0,
+                        messages=messages,
+                        **extra,
+                    )
+                    return _parse_json_object(_message_text(response.choices[0].message))
+                except LlmUnavailable as retry_exc:
+                    raise retry_exc
             if candidate == candidates[-1] or not _can_try_next_model(str(exc)):
                 raise
     raise last_error or LlmUnavailable("LLM request failed")

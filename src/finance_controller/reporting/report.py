@@ -6,6 +6,7 @@ from decimal import Decimal
 from io import StringIO
 from pathlib import Path
 
+from rich import box
 from rich.console import Console
 from rich.table import Table
 
@@ -241,8 +242,8 @@ def build_report(
 
 
 def render_text(report: Report) -> str:
-    console = Console(file=StringIO(), record=True, width=100)
-    console.print("[bold]AI Finance Controller — reconciliation report[/bold]")
+    console = Console(file=StringIO(), record=True, width=100, legacy_windows=False)
+    console.print("[bold]AI Finance Controller - reconciliation report[/bold]")
     if report.run.batch_source == BatchSource.GENERATED:
         console.print(
             f"source=generated  seed={report.run.seed}  records={report.run.num_records}  "
@@ -291,11 +292,11 @@ def render_text(report: Report) -> str:
             else ("n/a" if kpis.explanation_precision_pass is None else "fail")
         )
         console.print(
-            f"kpis  match_precision={mp} (≥{kpis.match_precision_threshold:.0%} {mp_gate})  "
-            f"exceptions {kpis.exceptions_before}→{kpis.exceptions_after} "
+            f"kpis  match_precision={mp} (>={kpis.match_precision_threshold:.0%} {mp_gate})  "
+            f"exceptions {kpis.exceptions_before}->{kpis.exceptions_after} "
             f"reduced={kpis.exceptions_reduced}  "
             f"elapsed_ms={kpis.elapsed_ms}  "
-            f"explanation_precision={ep} (≥{kpis.explanation_precision_threshold:.0%} {ep_gate})"
+            f"explanation_precision={ep} (>={kpis.explanation_precision_threshold:.0%} {ep_gate})"
         )
     console.print(f"sources: {report.run.source_counts}")
     if report.cash:
@@ -332,7 +333,7 @@ def render_text(report: Report) -> str:
     for warning in report.run.agent_warnings:
         console.print(f"[yellow]warning: {warning}[/yellow]")
 
-    inv = Table(title="Agent investigations (decision / evidence / action)")
+    inv = Table(title="Agent investigations (decision / evidence / action)", box=box.ASCII)
     inv.add_column("exc")
     inv.add_column("decision")
     inv.add_column("by")
@@ -340,7 +341,7 @@ def render_text(report: Report) -> str:
     inv.add_column("evidence")
     inv.add_column("rationale")
     if not report.investigations:
-        inv.add_row("—", "—", "—", "—", "none", "—")
+        inv.add_row("-", "-", "-", "-", "none", "-")
     for item in report.investigations:
         inv.add_row(
             item.exception_id,
@@ -352,7 +353,7 @@ def render_text(report: Report) -> str:
         )
     console.print(inv)
 
-    table = Table(title="Exceptions (unresolved)")
+    table = Table(title="Exceptions (unresolved)", box=box.ASCII)
     table.add_column("id")
     table.add_column("type")
     table.add_column("refs")
@@ -360,7 +361,7 @@ def render_text(report: Report) -> str:
     table.add_column("hypothesis")
     table.add_column("conf")
     if not report.exceptions:
-        table.add_row("—", "—", "—", "none", "—", "—")
+        table.add_row("-", "-", "-", "none", "-", "-")
     for exc in report.exceptions:
         hyp = exc.hypothesis
         table.add_row(

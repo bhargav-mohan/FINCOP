@@ -30,6 +30,17 @@ export function CashBooks({ data }: { data: DashboardRun }) {
   const expected = cash.expected_ledger_gross ?? "0.00";
   const credited = cash.bank_credited_total ?? "0.00";
   const variance = cash.variance ?? "0.00";
+  const unmatched = cash.unmatched_bank_net ?? "0.00";
+  const blocked = cash.in_flight_amount ?? "0.00";
+  const settledLedger = Number(cash.settled_ledger_gross ?? "0");
+  const settledBank = Number(cash.closed_bank_net);
+  const expectedNum = Number(expected);
+  const blockedNum = Number(blocked);
+  const ledgerOfClosed =
+    Number.isFinite(settledLedger) && settledLedger > 0
+      ? settledLedger
+      : expectedNum - blockedNum;
+  const feesOnClosed = ledgerOfClosed - settledBank;
 
   return (
     <section className="space-y-2">
@@ -56,6 +67,15 @@ export function CashBooks({ data }: { data: DashboardRun }) {
           <p className="text-sm text-muted">Ledger expected vs bank credited</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
             {formatInr(expected)} vs {formatInr(credited)}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Bank credited includes unmatched statement rows; Settled in bank is closed loops only.
+            They differ by Bank unmatched ({formatInr(unmatched)}).
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Settled + expected-not-credited + blocked do not add to ledger expected:
+            expected-not-credited is already inside blocked, and Settled is bank net after fees.
+            The leftover is fees on closed loops ({formatInr(feesOnClosed)}), not a hidden break.
           </p>
           <p className="mt-1 text-xs text-muted">
             Variance {formatInr(variance)}. Unknown ingest amounts are excluded, not counted as

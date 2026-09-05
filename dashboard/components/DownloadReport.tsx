@@ -58,7 +58,7 @@ function summaryText(data: DashboardRun): string {
       : "",
     data.kpis ? `Processing speed: ${data.kpis.elapsed_ms} ms` : "",
     data.kpis
-      ? `Explanation precision: ${data.kpis.explanation_precision == null ? "n/a" : formatPct(data.kpis.explanation_precision)}`
+      ? `Explanations right: ${data.kpis.explanation_precision == null ? "n/a" : formatPct(data.kpis.explanation_precision)}`
       : "",
     `Detection precision: ${formatPct(data.exception_precision)}`,
     `Detection recall: ${formatPct(data.exception_recall)}`,
@@ -78,10 +78,7 @@ function summaryText(data: DashboardRun): string {
     );
   }
   if (data.value) {
-    lines.push(
-      `Auto-closed: ${data.value.auto_closed_by_ai}`,
-      `Estimate (not measured): ${data.value.est_analyst_minutes_saved} minutes — ${data.value.assumption}`
-    );
+    lines.push(`Auto-closed: ${data.value.auto_closed_by_ai}`);
   }
   return `${lines.filter(Boolean).join("\n")}\n`;
 }
