@@ -270,7 +270,13 @@ def run_finance_controller(
             extra=extra,
             result=result,
         )
-    except (IngestError, UnicodeDecodeError, ValueError) as exc:
+    except (IngestError, UnicodeDecodeError) as exc:
+        return error_payload(seed=seed, num_records=num_records, error=str(exc))
+    except ValueError as exc:
+        # JSONDecodeError is a ValueError. A model that returns prose is not a
+        # failed ingest — the investigator already treats that as LlmUnavailable.
+        if isinstance(exc, json.JSONDecodeError):
+            raise
         return error_payload(seed=seed, num_records=num_records, error=str(exc))
 
 

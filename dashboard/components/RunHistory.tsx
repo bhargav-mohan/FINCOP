@@ -32,7 +32,7 @@ export function RunHistory({ store }: { store?: StoreHistory }) {
             <tr>
               <th className="px-3 py-2 font-medium">When</th>
               <th className="px-3 py-2 font-medium">Matched</th>
-              <th className="px-3 py-2 font-medium">Needs you</th>
+              <th className="px-3 py-2 font-medium">Open</th>
               <th className="px-3 py-2 font-medium">Waiting</th>
               <th className="px-3 py-2 font-medium">Precision</th>
               <th className="px-3 py-2 font-medium">Recall</th>

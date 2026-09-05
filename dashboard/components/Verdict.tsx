@@ -10,7 +10,7 @@ export function Verdict({ data }: { data: DashboardRun }) {
 
   const chips = [
     { label: "Matched", value: String(data.matched) },
-    { label: "Needs you", value: String(leftover) },
+    { label: "Open", value: String(leftover) },
     { label: "In the bank", value: formatInr(data.cash.closed_bank_net) },
     { label: "Waiting", value: formatInr(data.cash.in_flight_amount) },
     { label: "Overdue", value: String(data.cash.aged_out_count) },
@@ -24,8 +24,8 @@ export function Verdict({ data }: { data: DashboardRun }) {
           {leftover === 0
             ? `Everything matched — ${data.matched} of ${total} items closed.`
             : leftover === 1
-              ? `${formatPct(data.match_rate)} matched. One item still needs you.`
-              : `${formatPct(data.match_rate)} matched. ${leftover} items still need you.`}
+              ? `${formatPct(data.match_rate)} matched. One item is still open.`
+              : `${formatPct(data.match_rate)} matched. ${leftover} items are still open.`}
         </p>
       </div>
       <Panel className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">

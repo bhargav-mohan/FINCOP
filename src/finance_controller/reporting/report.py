@@ -242,7 +242,7 @@ def build_report(
 
 
 def render_text(report: Report) -> str:
-    console = Console(file=StringIO(), record=True, width=100, legacy_windows=False)
+    console = Console(file=StringIO(), record=True, width=160, legacy_windows=False)
     console.print("[bold]AI Finance Controller - reconciliation report[/bold]")
     if report.run.batch_source == BatchSource.GENERATED:
         console.print(

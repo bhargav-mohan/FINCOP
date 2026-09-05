@@ -66,6 +66,16 @@ describe("friendlyWarning", () => {
     );
   });
 
+  it("maps a JSONDecodeError from a free model as a parse miss, not a crash", () => {
+    const msg = friendlyWarning(
+      "Expecting property name enclosed in double quotes: line 10 column 5"
+    );
+    assert.equal(
+      msg,
+      "The free models did not return usable notes. Rules wrote the leftover reasons instead."
+    );
+  });
+
   it("maps an OpenRouter 402 to a credits message", () => {
     const msg = friendlyWarning(
       "LLM request failed: APIStatusError: Error code: 402 - can only afford 165 tokens"

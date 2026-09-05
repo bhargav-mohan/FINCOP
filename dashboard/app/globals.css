@@ -32,6 +32,11 @@ body {
   outline-offset: 2px;
 }
 
+/* Next can stream the same review more than once; keep the last copy. */
+[data-mount-once]:has(~ [data-mount-once]) {
+  display: none;
+}
+
 .btn {
   @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
 }

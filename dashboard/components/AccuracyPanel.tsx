@@ -98,7 +98,7 @@ export function AccuracyPanel({ data }: { data: DashboardRun }) {
                   value={String(data.value.auto_closed_by_llm ?? 0)}
                 />
                 <Metric
-                  label="Still need you"
+                  label="Still open"
                   title="Leftovers still open after the investigator"
                   value={String(data.value.sent_to_analyst)}
                 />

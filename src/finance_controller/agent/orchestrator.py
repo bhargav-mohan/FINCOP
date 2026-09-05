@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 
 from finance_controller.agent.exception_agent import attach_explanations, explain_leftovers_batch
@@ -294,7 +295,7 @@ def orchestrate(result: EngineResult, config: ReconConfig) -> ReconWorkbench:
             _progress(f"[agent] leftovers {exception_id} ({i}/{total}) with llm")
             try:
                 investigate_with_llm(bench, exception_id, config, budget)
-            except LlmUnavailable as exc_err:
+            except (LlmUnavailable, json.JSONDecodeError) as exc_err:
                 use_llm = False
                 bench.warnings.append(str(exc_err))
                 _progress(f"[agent] {exc_err} — remaining leftovers stay on rules")
@@ -312,7 +313,7 @@ def orchestrate(result: EngineResult, config: ReconConfig) -> ReconWorkbench:
             remaining = explain_leftovers_batch(
                 remaining, model=config.model, provider=config.provider, budget=budget
             )
-        except LlmUnavailable as exc_err:
+        except (LlmUnavailable, json.JSONDecodeError) as exc_err:
             use_llm = False
             bench.warnings.append(str(exc_err))
             _progress(f"[agent] {exc_err} — leftover copy stays on rules")

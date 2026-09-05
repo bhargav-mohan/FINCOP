@@ -122,7 +122,12 @@ export function friendlyWarning(raw: string): string | null {
   if (text.includes("hypotheses came from rules")) {
     return null;
   }
-  if (text.includes("json object") || text.includes("did not return a json")) {
+  if (
+    text.includes("json object") ||
+    text.includes("did not return a json") ||
+    text.includes("expecting property name") ||
+    text.includes("jsondecodeerror")
+  ) {
     return "The free models did not return usable notes. Rules wrote the leftover reasons instead.";
   }
   if (text.includes("llm") || text.includes("rule engine") || text.includes("leftovers stay")) {

@@ -1,11 +1,8 @@
-import { connection } from "next/server";
-import { unstable_noStore as noStore } from "next/cache";
-
 import { CashBooks } from "@/components/CashBooks";
 import { EvidenceTabs } from "@/components/EvidenceTabs";
 import { ExceptionsTable } from "@/components/ExceptionsTable";
-import { KpiStrip } from "@/components/KpiStrip";
 import { TopBar } from "@/components/TopBar";
+import { MountOnce } from "@/components/ui/MountOnce";
 import { Verdict } from "@/components/Verdict";
 import { Warnings } from "@/components/Warnings";
 import { friendlyError } from "@/lib/format";
@@ -20,8 +17,6 @@ export async function ReviewRun({
   useLlm: boolean;
   requestId: string;
 }) {
-  noStore();
-  await connection();
   let data;
   try {
     data = await runFinanceController({ zipPath, useLlm });
@@ -35,7 +30,7 @@ export async function ReviewRun({
   }
 
   return (
-    <>
+    <MountOnce name={`review:${requestId}`}>
       <TopBar
         batchSource={data.batch_source}
         sourceFiles={data.source_files}
@@ -46,15 +41,13 @@ export async function ReviewRun({
       />
       <Verdict data={data} />
       <CashBooks data={data} />
-      <KpiStrip data={data} />
       <ExceptionsTable
-        key={requestId}
         rows={data.exceptions}
         title={`Needs you (${data.exceptions.length})`}
         batchKey={data.store?.batch_key}
         totalExposure={data.total_exposure}
       />
-      <EvidenceTabs key={requestId} data={data} />
-    </>
+      <EvidenceTabs data={data} />
+    </MountOnce>
   );
 }

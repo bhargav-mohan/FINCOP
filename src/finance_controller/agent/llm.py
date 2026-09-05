@@ -263,22 +263,23 @@ def _parse_json_object(raw: str) -> dict:
         content = content.strip("`")
         if content.startswith("json"):
             content = content[4:].strip()
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
-        obj_start, obj_end = content.find("{"), content.rfind("}")
-        arr_start, arr_end = content.find("["), content.rfind("]")
-        if obj_start >= 0 and obj_end > obj_start and (arr_start < 0 or obj_start <= arr_start):
-            data = json.loads(content[obj_start : obj_end + 1])
-        elif arr_start >= 0 and arr_end > arr_start:
-            data = json.loads(content[arr_start : arr_end + 1])
-        else:
-            raise LlmUnavailable("LLM did not return a JSON object") from None
-    if isinstance(data, list):
-        return {"items": data}
-    if not isinstance(data, dict):
-        raise LlmUnavailable("LLM did not return a JSON object")
-    return data
+    candidates = [content]
+    obj_start, obj_end = content.find("{"), content.rfind("}")
+    arr_start, arr_end = content.find("["), content.rfind("]")
+    if obj_start >= 0 and obj_end > obj_start:
+        candidates.append(content[obj_start : obj_end + 1])
+    if arr_start >= 0 and arr_end > arr_start:
+        candidates.append(content[arr_start : arr_end + 1])
+    for blob in candidates:
+        try:
+            data = json.loads(blob)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, list):
+            return {"items": data}
+        if isinstance(data, dict):
+            return data
+    raise LlmUnavailable("LLM did not return a JSON object") from None
 
 
 def _openai_call(client, *, budget: LlmBudget | None = None, timeout_cap: float | None = None, **kwargs):

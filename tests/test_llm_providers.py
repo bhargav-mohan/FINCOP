@@ -66,6 +66,8 @@ def test_parse_json_object_strips_fences_and_prose():
     assert _parse_json_object("```json\n{\"ok\": true}\n```") == {"ok": True}
     assert _parse_json_object("here you go\n{\"ok\": true}\n") == {"ok": True}
     assert _parse_json_object('[{"id": "X0001"}]') == {"items": [{"id": "X0001"}]}
+    with pytest.raises(LlmUnavailable, match="JSON"):
+        _parse_json_object("notes {id: X0001, leftover} trailing")
 
 
 def test_quota_error_is_named_not_swallowed():

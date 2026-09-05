@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
-import { confidenceLabel, formatInr, humanizeType } from "@/lib/format";
+import { formatInr, humanizeType } from "@/lib/format";
 import type { DashboardException } from "@/lib/types";
 
 import { ExceptionFilters } from "./ExceptionFilters";
@@ -61,11 +61,23 @@ export function ExceptionsTable({
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const tableId = useId();
+
+  const uniqueRows = useMemo(() => {
+    const seen = new Set<string>();
+    return rows.filter((row) => {
+      if (!row.id || seen.has(row.id)) {
+        return false;
+      }
+      seen.add(row.id);
+      return true;
+    });
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rows.filter((row) => (typeFilter ? row.type === typeFilter : true) && matchesQuery(row, q));
-  }, [rows, query, typeFilter]);
+    return uniqueRows.filter((row) => (typeFilter ? row.type === typeFilter : true) && matchesQuery(row, q));
+  }, [uniqueRows, query, typeFilter]);
 
   const sorted = useMemo(() => {
     const copy = [...filtered];
@@ -98,9 +110,9 @@ export function ExceptionsTable({
           {totalExposure ? ` Money still at risk: ${formatInr(totalExposure)}.` : ""}
         </p>
       </div>
-      {rows.length > 0 ? (
+      {uniqueRows.length > 0 ? (
         <ExceptionFilters
-          rows={rows}
+          rows={uniqueRows}
           query={query}
           onQuery={setQuery}
           typeFilter={typeFilter}
@@ -130,7 +142,6 @@ export function ExceptionsTable({
               </th>
               <th className="px-3 py-2.5 font-medium">Why it is open</th>
               <th className="px-3 py-2.5 font-medium">Tied to</th>
-              <th className="px-3 py-2.5 font-medium">How sure</th>
               <th className="px-3 py-2.5 font-medium">
                 <span className="sr-only">See why</span>
               </th>
@@ -139,21 +150,20 @@ export function ExceptionsTable({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td className="px-3 py-6 text-muted" colSpan={8}>
-                  {rows.length === 0
+                <td className="px-3 py-6 text-muted" colSpan={7}>
+                  {uniqueRows.length === 0}
                     ? "Nothing left for you — every item matched."
                     : "Nothing matches that search. Clear filters to see the list again."}
                 </td>
               </tr>
             ) : (
               sorted.map((row) => {
-                const conf = confidenceLabel(row.confidence);
                 const expanded = openId === row.id;
                 return (
                   <ExceptionRow
                     key={row.id}
                     row={row}
-                    conf={conf}
+                    whyId={`${tableId}-${row.id}-why`}
                     expanded={expanded}
                     batchKey={batchKey}
                     onToggle={() => setOpenId(expanded ? null : row.id)}
@@ -170,18 +180,17 @@ export function ExceptionsTable({
 
 function ExceptionRow({
   row,
-  conf,
+  whyId,
   expanded,
   batchKey,
   onToggle,
 }: {
   row: DashboardException;
-  conf: ReturnType<typeof confidenceLabel>;
+  whyId: string;
   expanded: boolean;
   batchKey?: string;
   onToggle: () => void;
 }) {
-  const whyId = `${row.id}-why`;
   return (
     <>
       <tr className="border-b border-line last:border-0">
@@ -191,13 +200,6 @@ function ExceptionRow({
         <td className="px-3 py-3 text-muted">{ageLabel(row)}</td>
         <td className="px-3 py-3 text-ink">{row.reason}</td>
         <td className="px-3 py-3 text-muted">{row.refs.join(", ")}</td>
-        <td className="px-3 py-3">
-          {conf ? (
-            <span className="rounded-full bg-wash px-2 py-0.5 text-xs text-ink">{conf}</span>
-          ) : (
-            <span className="text-xs text-muted">—</span>
-          )}
-        </td>
         <td className="px-3 py-3">
           <button
             type="button"
@@ -212,7 +214,7 @@ function ExceptionRow({
       </tr>
       {expanded ? (
         <tr className="border-b border-line bg-wash">
-          <td id={whyId} className="px-3 py-4" colSpan={8}>
+          <td id={whyId} className="px-3 py-4" colSpan={7}>
             <div className="space-y-3 text-sm text-ink">
               <p>{row.explanation || row.reason}</p>
               {row.suggested_action ? (

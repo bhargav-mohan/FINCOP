@@ -119,6 +119,38 @@ def test_run_finance_controller_llm_used_false_without_key(monkeypatch):
     assert payload["llm_used"] is False
 
 
+def test_llm_json_decode_does_not_abort_the_dashboard_run(monkeypatch):
+    import json
+
+    from finance_controller.agent import exception_agent as agent
+    from finance_controller.config import ReconConfig
+
+    monkeypatch.setenv("LLM_PROVIDER", "glm")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-v1-test")
+    monkeypatch.setenv("GLM_MODEL", "minimax/minimax-m2.7:free")
+
+    def boom(*args, **kwargs):
+        raise json.JSONDecodeError("Expecting property name enclosed in double quotes", "{", 1)
+
+    monkeypatch.setattr(agent, "complete_json", boom)
+    payload = run_finance_controller(
+        seed=42,
+        num_records=60,
+        use_llm=True,
+        config=ReconConfig(
+            seed=42,
+            num_records=60,
+            inject_exceptions=12,
+            use_llm=True,
+            provider="glm",
+            model="minimax/minimax-m2.7:free",
+        ),
+    )
+    assert not payload.get("error")
+    assert payload["exception_count"] >= 1
+    assert payload["matched"] >= 1
+
+
 def test_dashboard_and_cli_agree_on_seed_42(tmp_path):
     """Headline match rate is groups closed / (closed + leftovers), not matched/num_records.
 

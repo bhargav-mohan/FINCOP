@@ -36,8 +36,13 @@ def test_page_streams_review_behind_inner_suspense():
     assert "Suspense" in src
     assert "ReviewPending" in src
     assert "ReviewRun" in src
-    assert "KpiStrip" in (DASHBOARD / "components" / "ReviewRun.tsx").read_text(encoding="utf-8")
     assert "CashBooks" in (DASHBOARD / "components" / "ReviewRun.tsx").read_text(encoding="utf-8")
+    review = (DASHBOARD / "components" / "ReviewRun.tsx").read_text(encoding="utf-8")
+    assert "ExceptionsTable" in review
+    assert "MountOnce" in review
+    table = (DASHBOARD / "components" / "ExceptionsTable.tsx").read_text(encoding="utf-8")
+    assert "How sure" not in table
+    assert "staleTimes" not in (DASHBOARD / "next.config.js").read_text(encoding="utf-8")
     assert "requestId" in src
     assert "force-no-store" in src
 
@@ -69,9 +74,6 @@ def test_cash_and_quality_labels_do_not_restate_engine_closes():
     assert "Explanation precision" not in quality
     assert "Rules alone" not in quality
     assert "Est. minutes saved" not in quality
-    strip = (DASHBOARD / "components" / "KpiStrip.tsx").read_text(encoding="utf-8")
-    assert strip.count("Matches correct") == 0
-    assert "Explanations right" in strip
     verdict = (DASHBOARD / "components" / "Verdict.tsx").read_text(encoding="utf-8")
     assert "Time saved" not in verdict
 
