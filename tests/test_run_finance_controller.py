@@ -113,6 +113,8 @@ def test_run_finance_controller_rejects_under_50():
 def test_run_finance_controller_llm_used_false_without_key(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("CLAUDE_API_KEY", raising=False)
     payload = run_finance_controller(seed=42, num_records=60, use_llm=True)
     assert payload["llm_used"] is False
 

@@ -6,6 +6,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from finance_controller.config import env_secret
+
 
 class LlmUnavailable(RuntimeError):
     pass
@@ -18,6 +20,7 @@ class LlmBudgetExhausted(LlmUnavailable):
 _GEMINI_OPENAI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 _ZAI_BASE = "https://api.z.ai/api/paas/v4/"
+_ANTHROPIC_BASE = "https://api.anthropic.com/v1/"
 
 # Per-call wall-clock cap. A timeout or failed call hands over to rules after
 # LLM_MAX_RETRIES. The engine and validator never wait on this path.
@@ -66,10 +69,14 @@ def _openai_sdk():
 
 def _client(provider: str):
     provider = (provider or "gemini").strip().lower()
+    if provider == "anthropic":
+        provider = "claude"
+    if provider == "google":
+        provider = "gemini"
     OpenAI = _openai_sdk()
 
-    if provider in {"gemini", "google"}:
-        api_key = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
+    if provider == "gemini":
+        api_key = env_secret("GEMINI_API_KEY") or env_secret("GOOGLE_API_KEY")
         if not api_key:
             raise LlmUnavailable("GEMINI_API_KEY is not set")
         return OpenAI(
@@ -80,15 +87,35 @@ def _client(provider: str):
         )
 
     if provider == "openai":
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        api_key = env_secret("OPENAI_API_KEY")
         if not api_key:
             raise LlmUnavailable("OPENAI_API_KEY is not set")
+        if api_key.startswith("sk-or-"):
+            raise LlmUnavailable(
+                "OPENAI_API_KEY looks like an OpenRouter key. "
+                "Set LLM_PROVIDER=glm and OPENROUTER_API_KEY, or use a real OpenAI key."
+            )
         return OpenAI(api_key=api_key, timeout=LLM_TIMEOUT_SEC, max_retries=LLM_MAX_RETRIES)
 
+    if provider == "claude":
+        api_key = env_secret("ANTHROPIC_API_KEY") or env_secret("CLAUDE_API_KEY")
+        if not api_key:
+            raise LlmUnavailable("ANTHROPIC_API_KEY is not set")
+        kwargs: dict[str, Any] = {
+            "api_key": api_key,
+            "base_url": os.getenv("ANTHROPIC_BASE_URL", "").strip() or _ANTHROPIC_BASE,
+            "timeout": LLM_TIMEOUT_SEC,
+            "max_retries": LLM_MAX_RETRIES,
+        }
+        workspace = os.getenv("ANTHROPIC_WORKSPACE_ID", "").strip()
+        if workspace:
+            kwargs["default_headers"] = {"anthropic-workspace-id": workspace}
+        return OpenAI(**kwargs)
+
     if provider in {"openrouter", "glm", "zai", "zhipu"}:
-        or_key = os.getenv("OPENROUTER_API_KEY", "").strip()
-        zai_key = os.getenv("ZAI_API_KEY", "").strip() or os.getenv("GLM_API_KEY", "").strip()
-        openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+        or_key = env_secret("OPENROUTER_API_KEY")
+        zai_key = env_secret("ZAI_API_KEY") or env_secret("GLM_API_KEY")
+        openai_key = env_secret("OPENAI_API_KEY")
         use_openrouter = (
             provider == "openrouter"
             or bool(or_key)
@@ -136,12 +163,12 @@ def _llm_error_text(exc: BaseException) -> str:
         )
     if "timed out" in lowered or "timeout" in lowered:
         return (
-            "GLM 5.2 timed out on a leftover. "
-            "Rules finished the rest. Retry, or set GLM_MODEL=z-ai/glm-5.3-flash for a faster pass."
+            "The model timed out on a leftover. "
+            "Rules finished the rest. Retry, or pass --no-llm."
         )
     if "exhausted" in lowered and "budget" in lowered:
         return (
-            "GLM hit the time cap for this review. "
+            "The model hit the time cap for this review. "
             "Rules finished the remaining leftovers."
         )
     if "401" in text or "403" in text or "api key" in lowered or ("invalid" in lowered and "key" in lowered):
@@ -149,15 +176,38 @@ def _llm_error_text(exc: BaseException) -> str:
             return "OpenRouter rejected the API key. Check OPENROUTER_API_KEY in .env."
         if "gemini" in lowered or "google" in lowered:
             return "Gemini rejected the API key. Check GEMINI_API_KEY in .env."
-        return "The LLM API key was rejected. Check OPENROUTER_API_KEY or GEMINI_API_KEY in .env."
+        if "anthropic" in lowered or "claude" in lowered:
+            return "Claude rejected the API key. Check ANTHROPIC_API_KEY in .env."
+        if "openai" in lowered:
+            return "OpenAI rejected the API key. Check OPENAI_API_KEY in .env."
+        return (
+            "The LLM API key was rejected. "
+            "Check GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY in .env."
+        )
     if "404" in text or "not found" in lowered:
-        return "The model name in .env was not found. For GLM 5.2 set GLM_MODEL=z-ai/glm-5.2 with LLM_PROVIDER=glm."
+        return (
+            "The model name in .env was not found. "
+            "Set GEMINI_MODEL, OPENAI_MODEL, CLAUDE_MODEL, or GLM_MODEL to match LLM_PROVIDER."
+        )
     snippet = text.replace("\n", " ").strip()[:180]
     return f"LLM request failed: {type(exc).__name__}: {snippet}"
 
 
+def _normalize_provider(provider: str) -> str:
+    name = (provider or "gemini").strip().lower()
+    if name == "anthropic":
+        return "claude"
+    if name == "google":
+        return "gemini"
+    return name
+
+
 def _is_glm_provider(provider: str) -> bool:
-    return (provider or "").strip().lower() in {"openrouter", "glm", "zai", "zhipu"}
+    return _normalize_provider(provider) in {"openrouter", "glm", "zai", "zhipu"}
+
+
+def _is_claude_provider(provider: str) -> bool:
+    return _normalize_provider(provider) == "claude"
 
 
 def _glm_call_kwargs() -> dict[str, Any]:
@@ -166,6 +216,23 @@ def _glm_call_kwargs() -> dict[str, Any]:
         "max_tokens": 1024,
         "extra_body": {"thinking": {"type": "disabled"}},
     }
+
+
+def _claude_call_kwargs() -> dict[str, Any]:
+    return {"max_tokens": 1024}
+
+
+def _provider_call_kwargs(provider: str) -> dict[str, Any]:
+    if _is_glm_provider(provider):
+        extra = _glm_call_kwargs()
+        if GLM_TIMEOUT_SEC is not None:
+            extra["timeout_cap"] = GLM_TIMEOUT_SEC
+        return extra
+    if _is_claude_provider(provider):
+        extra = _claude_call_kwargs()
+        extra["timeout_cap"] = LLM_TIMEOUT_SEC
+        return extra
+    return {}
 
 
 def _message_text(message: Any) -> str:
@@ -220,13 +287,9 @@ def complete_json(
     if budget is not None:
         budget.check()
     client = _client(provider)
-    extra: dict[str, Any] = {}
-    if provider.strip().lower() == "openai":
+    extra: dict[str, Any] = _provider_call_kwargs(provider)
+    if _normalize_provider(provider) == "openai":
         extra["response_format"] = {"type": "json_object"}
-    if _is_glm_provider(provider):
-        extra.update(_glm_call_kwargs())
-        if GLM_TIMEOUT_SEC is not None:
-            extra["timeout_cap"] = GLM_TIMEOUT_SEC
     system_content = system or (
         "You classify finance reconciliation exceptions. "
         "Reply with JSON keys: hypothesis_type, explanation, "
@@ -272,9 +335,7 @@ def run_tool_loop(
     for _ in range(max_rounds):
         if budget is not None:
             budget.check()
-        extra = _glm_call_kwargs() if _is_glm_provider(provider) else {}
-        if extra and GLM_TIMEOUT_SEC is not None:
-            extra["timeout_cap"] = GLM_TIMEOUT_SEC
+        extra = _provider_call_kwargs(provider)
         response = _openai_call(
             client,
             budget=budget,

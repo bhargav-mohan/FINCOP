@@ -16,9 +16,12 @@ def csv_fixture_dir() -> Path:
 def isolate_llm_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tests must not pick up a real key from the developer's .env."""
     for name in (
+        "LLM_PROVIDER",
         "GEMINI_API_KEY",
         "GOOGLE_API_KEY",
         "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "CLAUDE_API_KEY",
         "OPENROUTER_API_KEY",
         "ZAI_API_KEY",
         "GLM_API_KEY",

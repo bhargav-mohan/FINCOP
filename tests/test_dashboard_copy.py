@@ -24,6 +24,8 @@ def test_gemini_key_warning_still_matches_explicit_key_errors():
     src = _friendly_warning_src()
     assert "gemini_api_key" in src
     assert "openrouter_api_key" in src
+    assert "openai_api_key" in src
+    assert "anthropic_api_key" in src
     assert "api key" in src
 
 

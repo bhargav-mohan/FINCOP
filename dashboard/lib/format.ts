@@ -78,13 +78,22 @@ export function friendlyWarning(raw: string): string | null {
     return "The model quota was used up, so rules finished the leftovers. Wait about a minute and run again.";
   }
   if (text.includes("budget") || text.includes("exhausted") || text.includes("time cap")) {
-    return "GLM hit the time cap for this review. Rules finished the remaining leftovers.";
+    return "The model hit the time cap for this review. Rules finished the remaining leftovers.";
   }
   if (text.includes("timed out") || text.includes("timeout")) {
-    return "GLM 5.2 took too long on a leftover. Rules finished the rest.";
+    return "The model took too long on a leftover. Rules finished the rest.";
   }
   if (text.includes("openrouter_api_key") || text.includes("z-ai/glm") || text.includes("zai_api_key")) {
     return "No GLM key loaded. Add OPENROUTER_API_KEY (or ZAI_API_KEY) to the repo .env and restart the dashboard.";
+  }
+  if (
+    text.includes("anthropic_api_key") ||
+    text.includes("claude_api_key")
+  ) {
+    return "No Claude key loaded. Add ANTHROPIC_API_KEY to the repo .env and restart the dashboard.";
+  }
+  if (text.includes("openai_api_key")) {
+    return "No OpenAI key loaded. Add OPENAI_API_KEY to the repo .env and restart the dashboard.";
   }
   if (
     text.includes("gemini_api_key") ||
@@ -93,10 +102,10 @@ export function friendlyWarning(raw: string): string | null {
     return "No Gemini key loaded. Add GEMINI_API_KEY to the repo .env and restart the dashboard.";
   }
   if (text.includes("api key")) {
-    return "No LLM key loaded. Add OPENROUTER_API_KEY for GLM 5.2, or GEMINI_API_KEY, then restart the dashboard.";
+    return "No LLM key loaded. Add GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY, then restart the dashboard.";
   }
   if (text.includes("model") && text.includes("not found")) {
-    return "The model name in .env was not found. For GLM 5.2 set GLM_MODEL=z-ai/glm-5.2 and LLM_PROVIDER=glm.";
+    return "The model name in .env was not found. Set GEMINI_MODEL, OPENAI_MODEL, CLAUDE_MODEL, or GLM_MODEL to match LLM_PROVIDER.";
   }
   if (text.includes("hypotheses came from rules")) {
     return null;

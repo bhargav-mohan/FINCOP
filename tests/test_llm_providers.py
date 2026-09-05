@@ -7,7 +7,11 @@ from finance_controller.agent.llm import (
     _parse_json_object,
 )
 from finance_controller.config import (
+    CLAUDE_DEFAULT_MODEL,
+    GEMINI_DEFAULT_MODEL,
+    OPENAI_DEFAULT_MODEL,
     OPENROUTER_GLM_MODEL,
+    ReconConfig,
     ZAI_GLM_MODEL,
     resolve_default_model,
     resolve_default_provider,
@@ -69,3 +73,88 @@ def test_quota_error_is_named_not_swallowed():
 def test_budget_error_names_the_time_cap():
     text = _llm_error_text(RuntimeError("LLM budget of 90s exhausted; falling back to rules"))
     assert "time cap" in text.lower() or "budget" in text.lower()
+
+
+def test_infers_openai_from_key(monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert resolve_default_provider() == "openai"
+    assert resolve_default_model() == OPENAI_DEFAULT_MODEL
+
+
+def test_infers_claude_from_key(monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    assert resolve_default_provider() == "claude"
+    assert resolve_default_model() == CLAUDE_DEFAULT_MODEL
+
+
+def test_infers_gemini_from_key(monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "g-test")
+    assert resolve_default_provider() == "gemini"
+    assert resolve_default_model() == GEMINI_DEFAULT_MODEL
+
+
+def test_explicit_provider_beats_other_keys(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("GEMINI_API_KEY", "g-test")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert resolve_default_provider() == "openai"
+
+
+def test_placeholder_glm_falls_through_to_gemini(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "glm")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "PASTE_HERE")
+    monkeypatch.setenv("GEMINI_API_KEY", "g-test")
+    assert resolve_default_provider() == "gemini"
+    assert ReconConfig().provider == "gemini"
+
+
+def test_placeholder_key_does_not_open_a_client(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "PASTE_HERE")
+    with pytest.raises(LlmUnavailable, match="OPENROUTER_API_KEY or ZAI_API_KEY"):
+        _client("glm")
+
+
+def test_embedded_paste_here_is_rejected(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "sk-PASTE_HERE")
+    with pytest.raises(LlmUnavailable, match="GEMINI_API_KEY"):
+        _client("gemini")
+
+
+def test_claude_client_uses_anthropic_base(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    client = _client("claude")
+    assert "anthropic.com" in str(client.base_url)
+    assert client.api_key == "sk-ant-test"
+
+
+def test_anthropic_alias_uses_claude_path(monkeypatch):
+    monkeypatch.setenv("CLAUDE_API_KEY", "sk-ant-alias")
+    client = _client("anthropic")
+    assert "anthropic.com" in str(client.base_url)
+    assert client.api_key == "sk-ant-alias"
+
+
+def test_openai_client_uses_openai_key(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    client = _client("openai")
+    assert client.api_key == "sk-test"
+    assert "generativelanguage" not in str(client.base_url)
+    assert "anthropic.com" not in str(client.base_url)
+
+
+def test_claude_without_key_raises():
+    with pytest.raises(LlmUnavailable, match="ANTHROPIC_API_KEY"):
+        _client("claude")
+
+
+def test_openai_without_key_raises():
+    with pytest.raises(LlmUnavailable, match="OPENAI_API_KEY"):
+        _client("openai")
+
+
+def test_gemini_without_key_raises():
+    with pytest.raises(LlmUnavailable, match="GEMINI_API_KEY"):
+        _client("gemini")

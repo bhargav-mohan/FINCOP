@@ -9,9 +9,7 @@ from finance_controller.config import (
     DEFAULT_INJECT_EDGES,
     DEFAULT_INJECT_EXCEPTIONS,
     DEFAULT_INJECT_RESOLVABLE,
-    DEFAULT_MODEL,
     DEFAULT_NUM_RECORDS,
-    DEFAULT_PROVIDER,
     DEFAULT_SEED,
     ReconConfig,
 )
@@ -30,8 +28,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--inject-exceptions", type=int, default=DEFAULT_INJECT_EXCEPTIONS)
     parser.add_argument("--inject-resolvable", type=int, default=DEFAULT_INJECT_RESOLVABLE)
     parser.add_argument("--inject-edges", type=int, default=DEFAULT_INJECT_EDGES)
-    parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--provider", default=DEFAULT_PROVIDER)
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--provider", default=None)
     parser.add_argument("--out", default="report")
     parser.add_argument("--data-dir", default=None, help="Load payments.csv, settlements.csv, bank.csv instead of generating")
     parser.add_argument(
@@ -137,8 +135,8 @@ def main(argv: list[str] | None = None) -> None:
         inject_exceptions=args.inject_exceptions,
         inject_resolvable=args.inject_resolvable,
         inject_edges=args.inject_edges,
-        model=args.model,
-        provider=args.provider,
+        model=args.model or "",
+        provider=args.provider or "",
         use_llm=not args.no_llm,
     )
     sys.exit(

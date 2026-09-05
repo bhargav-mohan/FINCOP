@@ -30,17 +30,33 @@ describe("friendlyWarning", () => {
     );
   });
 
+  it("maps a missing OpenAI key", () => {
+    const msg = friendlyWarning("OPENAI_API_KEY is not set");
+    assert.equal(
+      msg,
+      "No OpenAI key loaded. Add OPENAI_API_KEY to the repo .env and restart the dashboard."
+    );
+  });
+
+  it("maps a missing Claude key", () => {
+    const msg = friendlyWarning("ANTHROPIC_API_KEY is not set");
+    assert.equal(
+      msg,
+      "No Claude key loaded. Add ANTHROPIC_API_KEY to the repo .env and restart the dashboard."
+    );
+  });
+
   it("maps a GLM time cap instead of a generic unavailable banner", () => {
     const msg = friendlyWarning("LLM budget of 90s exhausted; falling back to rules");
     assert.equal(
       msg,
-      "GLM hit the time cap for this review. Rules finished the remaining leftovers."
+      "The model hit the time cap for this review. Rules finished the remaining leftovers."
     );
   });
 
   it("maps a GLM timeout", () => {
     const msg = friendlyWarning("GLM 5.2 timed out on a leftover. Rules finished the rest.");
-    assert.equal(msg, "GLM 5.2 took too long on a leftover. Rules finished the rest.");
+    assert.equal(msg, "The model took too long on a leftover. Rules finished the rest.");
   });
 
   it("maps Razorpay adjustments without claiming Gemini failed", () => {
