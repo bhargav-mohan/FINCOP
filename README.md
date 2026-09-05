@@ -216,8 +216,6 @@ GLM_MODEL=glm-5.2
 - **Razorpay ZIP uses real column names and synthetic rows.**
 - **Throughput is one laptop, not a SLA.**
 
-Deeper: `ARCHITECTURE.md` (matching contract), `FAILURE_LOG.md` (defects we found in our own gates and docs, including the 97% density trick).
-
 ```bash
 pytest
 ```
